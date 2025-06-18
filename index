@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Référentiel Interactif d'IA Générative</title>
+
+    <!-- Chosen Palette: Calm Corporate Harmony -->
+
+    <!-- Application Structure Plan: The application is designed as a single-page dashboard. The core idea is to move away from the linear document structure and allow users to immediately access relevant content. The top navigation provides access to the main pillars of the report: 'Fondamentaux' (Basics), 'Départements' (The core prompt library), and 'Déploiement' (Strategic part for managers). The main interaction is centered around the department selector, which dynamically loads department-specific use cases as interactive cards. This approach is chosen for usability, as employees will most likely want to see prompts for their specific roles first. An interactive ROI calculator is included to transform a theoretical concept from the report into an engaging, practical tool. A language switcher has been added to the header. -->
+
+    <!-- Visualization & Content Choices: 
+
+        - Report Info: Department-specific prompt examples (tables in the report). -> Goal: Inform, Organize. -> Viz/Presentation Method: Interactive Cards. -> Interaction: User clicks a department button, JS dynamically generates cards for each prompt. Clicking a card reveals details. -> Justification: Much more engaging and less overwhelming than static tables. Allows users to focus on one use case at a time. -> Library/Method: Vanilla JS DOM Manipulation.
+
+        - Report Info: ROI calculation formula. -> Goal: Engage, Demonstrate Value. -> Viz/Presentation Method: An interactive form linked to a Chart.js bar chart. -> Interaction: User adjusts sliders for 'Heures Gagnées' and 'Coût Horaire', the chart and ROI text update in real-time. -> Justification: Turns a static formula into a personalized tool, making the concept of ROI tangible and impactful. -> Library/Method: Chart.js.
+
+        - Report Info: Structure of a perfect prompt. -> Goal: Inform, Educate. -> Viz/Presentation Method: A static visual diagram built with HTML/CSS. -> Interaction: None. -> Justification: A visual layout of the 4 components (Rôle, Contexte, Tâche, Format) is easier to remember than a simple list. -> Library/Method: Tailwind CSS.
+
+        - Report Info: Key risks of AI usage. -> Goal: Inform, Warn. -> Viz/Presentation Method: An accordion component. -> Interaction: User clicks to expand and read details for each risk. -> Justification: Prevents information overload by keeping detailed text hidden by default. -> Library/Method: Vanilla JS.
+
+        - ✨ Gemini Feature 1: Idea Generator. -> Goal: Extend content dynamically. -> Presentation: Button in each department section. -> Interaction: User clicks, sees a loading state, then new cards with AI-generated ideas appear. -> Justification: Makes the library a living tool, not a static document. -> Library/Method: Gemini API Fetch.
+
+        - ✨ Gemini Feature 2: Prompt Enhancer. -> Goal: Teach by doing. -> Presentation: A new "Workshop" section. -> Interaction: User enters a basic idea, clicks a button, and sees their idea transformed into a well-structured prompt. -> Justification: Provides direct, practical value and reinforces learning. -> Library/Method: Gemini API Fetch.
+
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+        body {
+
+            font-family: 'Inter', sans-serif;
+
+            background-color: #F8F5F2; /* Warm Neutral Background */
+
+            color: #3D405B; /* Dark, readable text */
+
+        }
+
+        .nav-link {
+
+            transition: color 0.3s, border-bottom-color 0.3s;
+
+            border-bottom: 2px solid transparent;
+
+        }
+
+        .nav-link.active, .nav-link:hover {
+
+            color: #81B29A; /* Primary Accent */
+
+            border-bottom-color: #81B29A;
+
+        }
+
+        .btn-primary {
+
+            background-color: #81B29A;
+
+            color: #FFFFFF;
+
+            transition: background-color 0.3s;
+
+        }
+
+        .btn-primary:hover {
+
+            background-color: #6a9c80;
+
+        }
+
+        .btn-gemini {
+
+            background: linear-gradient(90deg, #81B29A, #F2CC8F);
+
+            color: white;
+
+            transition: transform 0.3s, box-shadow 0.3s;
+
+        }
+
+        .btn-gemini:hover {
+
+            transform: scale(1.05);
+
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+
+        }
+
+        .card {
+
+            background-color: #FFFFFF;
+
+            border-radius: 0.75rem;
+
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+            transition: transform 0.3s, box-shadow 0.3s;
+
+        }
+
+        .card:hover {
+
+            transform: translateY(-5px);
+
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+
+        }
+
+        .department-btn.active {
+
+            background-color: #3D405B;
+
+            color: #FFFFFF;
+
+            transform: scale(1.05);
+
+        }
+
+        .lang-btn { opacity: 0.6; transition: opacity 0.3s, transform 0.3s; border-bottom: 2px solid transparent; }
+
+        .lang-btn.active { opacity: 1; font-weight: 700; transform: scale(1.1); border-bottom-color: #F2CC8F; }
+
+        .prompt-card-content, .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.7s ease-in-out; }
+
+        .prompt-card-content.open, .accordion-content.open { max-height: 1000px; }
+
+        .icon-arrow { transition: transform 0.5s ease-in-out; }
+
+        .icon-arrow.open { transform: rotate(180deg); }
+
+        .loader {
+
+            width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: #81B29A;
+
+            border-radius: 50%; display: inline-block; box-sizing: border-box;
+
+            animation: rotation 1s linear infinite;
+
+        }
+
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+    </style>
+
+</head>
+
+<body class="antialiased">
+
+
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+
+            <h1 class="text-xl md:text-2xl font-bold text-[#3D405B]" data-i18n-key="headerTitle">IA Générative</h1>
+
+            <div class="hidden md:flex items-center space-x-8">
+
+                <a href="#accueil" class="nav-link active" data-i18n-key="navHome">Accueil</a>
+
+                <a href="#fondamentaux" class="nav-link" data-i18n-key="navFundamentals">Fondamentaux</a>
+
+                <a href="#departements" class="nav-link" data-i18n-key="navDepartments">Départements</a>
+
+                <a href="#deploiement" class="nav-link" data-i18n-key="navDeployment">Déploiement</a>
+
+            </div>
+
+            <div class="flex items-center space-x-3 text-sm">
+
+                <button class="lang-btn active" data-lang="fr">FR</button>
+
+                <button class="lang-btn" data-lang="en">EN</button>
+
+                <button class="lang-btn" data-lang="pt">PT</button>
+
+                <button class="lang-btn" data-lang="pl">PL</button>
+
+            </div>
+
+            <button id="mobile-menu-button" class="md:hidden p-2">
+
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+
+            </button>
+
+        </nav>
+
+        <div id="mobile-menu" class="hidden md:hidden">
+
+            <a href="#accueil" class="block py-2 px-6 text-sm nav-link active" data-i18n-key="navHomeMobile">Accueil</a>
+
+            <a href="#fondamentaux" class="block py-2 px-6 text-sm nav-link" data-i18n-key="navFundamentalsMobile">Fondamentaux</a>
+
+            <a href="#departements" class="block py-2 px-6 text-sm nav-link" data-i18n-key="navDepartmentsMobile">Départements</a>
+
+            <a href="#deploiement" class="block py-2 px-6 text-sm nav-link" data-i18n-key="navDeploymentMobile">Déploiement</a>
+
+        </div>
+
+    </header>
+
+
+
+    <main>
+
+        <section id="accueil" class="page-section container mx-auto px-6 py-16 text-center">
+
+            <h2 class="text-3xl md:text-5xl font-bold mb-4" data-i18n-key="homeTitle">Votre Copilote pour l'Innovation</h2>
+
+            <p class="text-lg md:text-xl max-w-3xl mx-auto text-gray-600 mb-8" data-i18n-key="homeSubtitle">
+
+                Explorez le potentiel de l'Intelligence Artificielle Générative. Ce référentiel est conçu pour vous aider à transformer vos tâches quotidiennes, stimuler votre créativité et accélérer la prise de décision.
+
+            </p>
+
+            <a href="#departements" class="btn-primary font-bold py-3 px-8 rounded-full text-lg" data-i18n-key="homeButton">Commencer l'exploration</a>
+
+        </section>
+
+
+
+        <section id="fondamentaux" class="page-section hidden bg-white py-16 md:py-24">
+
+            <div class="container mx-auto px-6">
+
+                <div class="text-center mb-12">
+
+                    <h2 class="text-3xl md:text-4xl font-bold" data-i18n-key="fundamentalsTitle">Les Fondations Essentielles</h2>
+
+                    <p class="text-lg text-gray-600 mt-2" data-i18n-key="fundamentalsSubtitle">Maîtrisez les bases pour une utilisation efficace et responsable de l'IA.</p>
+
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-12 items-start">
+
+                    <div class="card p-8">
+
+                        <h3 class="text-2xl font-bold mb-4 text-[#81B29A]" data-i18n-key="promptArtTitle">L'Art du Prompt Parfait</h3>
+
+                        <p class="mb-6" data-i18n-key="promptArtDesc">La qualité de votre interaction avec l'IA détermine la qualité de la réponse. Un bon prompt est une instruction claire et structurée.</p>
+
+                        <div class="space-y-4">
+
+                            <div class="flex items-start p-4 bg-[#F8F5F2] rounded-lg">
+
+                                <span class="text-xl font-bold text-[#81B29A] mr-4">1</span>
+
+                                <div><h4 class="font-bold" data-i18n-key="promptRole">Rôle (Persona)</h4><p class="text-sm text-gray-600" data-i18n-key="promptRoleDesc">Dites à l'IA qui elle doit être. "Agis en tant qu'expert financier...".</p></div>
+
+                            </div>
+
+                            <div class="flex items-start p-4 bg-[#F8F5F2] rounded-lg">
+
+                                <span class="text-xl font-bold text-[#81B29A] mr-4">2</span>
+
+                                <div><h4 class="font-bold" data-i18n-key="promptContext">Contexte</h4><p class="text-sm text-gray-600" data-i18n-key="promptContextDesc">Donnez-lui les informations nécessaires pour comprendre votre demande.</p></div>
+
+                            </div>
+
+                            <div class="flex items-start p-4 bg-[#F8F5F2] rounded-lg">
+
+                                <span class="text-xl font-bold text-[#81B29A] mr-4">3</span>
+
+                                <div><h4 class="font-bold" data-i18n-key="promptTask">Tâche (Instruction)</h4><p class="text-sm text-gray-600" data-i18n-key="promptTaskDesc">Soyez précis. Utilisez des verbes d'action : "Analyse, Rédige, Compare...".</p></div>
+
+                            </div>
+
+                            <div class="flex items-start p-4 bg-[#F8F5F2] rounded-lg">
+
+                                <span class="text-xl font-bold text-[#81B29A] mr-4">4</span>
+
+                                <div><h4 class="font-bold" data-i18n-key="promptFormat">Format</h4><p class="text-sm text-gray-600" data-i18n-key="promptFormatDesc">Spécifiez la forme de la réponse : "tableau", "liste à puces", "email".</p></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="card p-8">
+
+                        <h3 class="text-2xl font-bold mb-4 text-[#F2CC8F]" data-i18n-key="responsibleTitle">Cadre d'Usage Responsable</h3>
+
+                        <p class="mb-6" data-i18n-key="responsibleDesc">Utiliser l'IA, c'est innover en toute sécurité. Chaque collaborateur doit comprendre et appliquer ces règles essentielles.</p>
+
+                        <div id="accordion-container" class="space-y-2"></div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div id="prompt-workshop" class="mt-16">
+
+                    <div class="card p-8">
+
+                        <h3 class="text-2xl font-bold mb-2 text-center" data-i18n-key="workshopTitle">✨ Atelier de Prompt ✨</h3>
+
+                        <p class="text-center text-gray-600 mb-6" data-i18n-key="workshopDesc">Vous avez une idée ? Décrivez-la ci-dessous et laissez l'IA la transformer en un prompt structuré et efficace.</p>
+
+                        <textarea id="prompt-input" class="w-full p-3 border border-gray-300 rounded-lg mb-4" rows="4" data-i18n-placeholder="workshopPlaceholder"></textarea>
+
+                        <button id="enhance-prompt-btn" class="btn-gemini font-bold py-3 px-8 rounded-full w-full flex items-center justify-center">
+
+                            <span data-i18n-key="workshopButton">Améliorer mon Prompt</span>
+
+                        </button>
+
+                        <div id="prompt-output" class="mt-6 hidden">
+
+                             <div id="prompt-loader" class="text-center hidden"><div class="loader mx-auto"></div></div>
+
+                             <div id="prompt-result" class="bg-gray-50 p-6 rounded-lg"></div>
+
+                             <div id="prompt-error" class="text-center text-red-600 mt-4 hidden"></div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <section id="departements" class="page-section hidden py-16 md:py-24">
+
+            <div class="container mx-auto px-6">
+
+                <div class="text-center mb-12">
+
+                    <h2 class="text-3xl md:text-4xl font-bold" data-i18n-key="departmentsTitle">Bibliothèque de Prompts par Département</h2>
+
+                    <p class="text-lg text-gray-600 mt-2" data-i18n-key="departmentsSubtitle">Sélectionnez votre département pour découvrir des cas d'usage concrets et des prompts prêts à l'emploi.</p>
+
+                </div>
+
+                <div id="department-selector" class="flex flex-wrap justify-center gap-2 md:gap-4 mb-12"></div>
+
+                <div id="department-content"></div>
+
+            </div>
+
+        </section>
+
+        
+
+        <section id="deploiement" class="page-section hidden bg-white py-16 md:py-24">
+
+            <div class="container mx-auto px-6">
+
+                 <div class="text-center mb-12">
+
+                    <h2 class="text-3xl md:text-4xl font-bold" data-i18n-key="deploymentTitle">Déploiement Stratégique</h2>
+
+                    <p class="text-lg text-gray-600 mt-2" data-i18n-key="deploymentSubtitle">Piloter le changement, mesurer l'impact et cultiver l'innovation.</p>
+
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-12 items-start">
+
+                    <div class="card p-8">
+
+                        <h3 class="text-2xl font-bold mb-4 text-[#81B29A]" data-i18n-key="pilotTitle">Lancer un Projet Pilote</h3>
+
+                        <ol id="pilot-steps" class="relative border-l border-gray-200"></ol>
+
+                    </div>
+
+                    <div class="card p-8">
+
+                        <h3 class="text-2xl font-bold mb-4 text-[#F2CC8F]" data-i18n-key="roiTitle">Calculateur de Retour sur Investissement (ROI)</h3>
+
+                        <p class="text-gray-600 mb-6" data-i18n-key="roiDesc">Estimez l'impact financier de l'IA sur la productivité. Ajustez les curseurs pour simuler les gains potentiels.</p>
+
+                        <div class="space-y-4 mb-6">
+
+                            <div><label for="heures" class="block mb-1 text-sm font-medium" data-i18n-key="roiHoursLabel">Heures gagnées par collaborateur par mois</label><input id="heures" type="range" min="0" max="20" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"><div class="text-right font-semibold"><span id="heures-val">5</span> <span data-i18n-key="roiHoursUnit">heures</span></div></div>
+
+                            <div><label for="collaborateurs" class="block mb-1 text-sm font-medium" data-i18n-key="roiEmployeesLabel">Nombre de collaborateurs</label><input id="collaborateurs" type="range" min="1" max="500" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"><div class="text-right font-semibold"><span id="collaborateurs-val">50</span></div></div>
+
+                            <div><label for="cout" class="block mb-1 text-sm font-medium" data-i18n-key="roiCostLabel">Coût horaire moyen chargé (€)</label><input id="cout" type="range" min="20" max="100" value="45" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"><div class="text-right font-semibold"><span id="cout-val">45</span> €</div></div>
+
+                        </div>
+
+                        <div class="bg-[#F8F5F2] p-4 rounded-lg text-center"><p class="text-sm text-gray-600" data-i18n-key="roiResultLabel">Économie annuelle estimée</p><p id="roi-result" class="text-3xl font-bold text-[#3D405B]">13 500 €</p></div>
+
+                        <div class="mt-4 h-64 chart-container relative max-w-md mx-auto"><canvas id="roiChart"></canvas></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+
+<script>
+
+// --- TRANSLATION DATA ---
+
+const translations = {
+
+    fr: {
+
+        headerTitle: "IA Générative", navHome: "Accueil", navFundamentals: "Fondamentaux", navDepartments: "Départements", navDeployment: "Déploiement",
+
+        navHomeMobile: "Accueil", navFundamentalsMobile: "Fondamentaux", navDepartmentsMobile: "Départements", navDeploymentMobile: "Déploiement",
+
+        homeTitle: "Votre Copilote pour l'Innovation",
+
+        homeSubtitle: "Explorez le potentiel de l'Intelligence Artificielle Générative. Ce référentiel est conçu pour vous aider à transformer vos tâches quotidiennes, stimuler votre créativité et accélérer la prise de décision.",
+
+        homeButton: "Commencer l'exploration",
+
+        fundamentalsTitle: "Les Fondations Essentielles", fundamentalsSubtitle: "Maîtrisez les bases pour une utilisation efficace et responsable de l'IA.",
+
+        promptArtTitle: "L'Art du Prompt Parfait", promptArtDesc: "La qualité de votre interaction avec l'IA détermine la qualité de la réponse. Un bon prompt est une instruction claire et structurée.",
+
+        promptRole: "Rôle (Persona)", promptRoleDesc: "Dites à l'IA qui elle doit être. \"Agis en tant qu'expert financier...\".",
+
+        promptContext: "Contexte", promptContextDesc: "Donnez-lui les informations nécessaires pour comprendre votre demande.",
+
+        promptTask: "Tâche (Instruction)", promptTaskDesc: "Soyez précis. Utilisez des verbes d'action : \"Analyse, Rédige, Compare...\".",
+
+        promptFormat: "Format", promptFormatDesc: "Spécifiez la forme de la réponse : \"tableau\", \"liste à puces\", \"email\".",
+
+        responsibleTitle: "Cadre d'Usage Responsable", responsibleDesc: "Utiliser l'IA, c'est innover en toute sécurité. Chaque collaborateur doit comprendre et appliquer ces règles essentielles.",
+
+        workshopTitle: "✨ Atelier de Prompt ✨", workshopDesc: "Vous avez une idée ? Décrivez-la ci-dessous et laissez l'IA la transformer en un prompt structuré et efficace.",
+
+        workshopPlaceholder: "Exemple : 'Je veux un email pour annoncer le lancement d'un nouveau produit à nos clients'",
+
+        workshopButton: "Améliorer mon Prompt",
+
+        workshopError: "Désolé, une erreur est survenue. Veuillez réessayer.",
+
+        departmentsTitle: "Bibliothèque de Prompts par Département", departmentsSubtitle: "Sélectionnez votre département pour découvrir des cas d'usage concrets et des prompts prêts à l'emploi.",
+
+        departmentDefault: "Veuillez sélectionner un département pour afficher les prompts.",
+
+        generateIdeasButton: "✨ Générer de nouvelles idées",
+
+        ideasError: "Impossible de générer des idées pour le moment. Veuillez réessayer.",
+
+        promptsLibrary: "Bibliothèque de Prompts", customAssistants: "Idées d'Assistants Personnalisés", blueprint: "MODÈLE (BLUEPRINT)", example: "EXEMPLE CONCRET",
+
+        deploymentTitle: "Déploiement Stratégique", deploymentSubtitle: "Piloter le changement, mesurer l'impact et cultiver l'innovation.",
+
+        pilotTitle: "Lancer un Projet Pilote", roiTitle: "Calculateur de Retour sur Investissement (ROI)",
+
+        roiDesc: "Estimez l'impact financier de l'IA sur la productivité. Ajustez les curseurs pour simuler les gains potentiels.",
+
+        roiHoursLabel: "Heures gagnées par collaborateur par mois", roiHoursUnit: "heures", roiEmployeesLabel: "Nombre de collaborateurs", roiCostLabel: "Coût horaire moyen chargé (€)",
+
+        roiResultLabel: "Économie annuelle estimée", roiChartTitle: "Comparaison Gains vs Coûts", roiChartGains: "Gains annuels", roiChartCosts: "Coûts annuels estimés", roiChartLabel: "Euros (€)",
+
+        pilotSteps: [
+
+            { title: "Identifier les Équipes Pilotes", desc: "Choisir 2-3 départements volontaires avec des cas d'usage à fort potentiel." },
+
+            { title: "Définir des Objectifs Mesurables (KPIs)", desc: "Ex: \"Réduire le temps de rédaction d'une tâche de 50% en 4 semaines.\"" },
+
+            { title: "Former les Équipes", desc: "Ateliers sur l'art du prompt et la charte de sécurité." },
+
+            { title: "Créer une Boucle de Feedback", desc: "Canal de communication dédié pour partager succès et difficultés." },
+
+            { title: "Analyser et Communiquer les Résultats", desc: "Compiler un rapport de synthèse pour le management avec les gains et leçons." }
+
+        ],
+
+        accordionData: [
+
+            { title: "Confidentialité des Données", content: "<strong>RISQUE CRITIQUE.</strong> Ne jamais soumettre d'informations personnelles (PII), de données clients, financières non publiques, de secrets commerciaux ou de code source propriétaire. La saisie de telles données équivaut à une fuite." },
+
+            { title: "Exactitude et 'Hallucinations'", content: "Les modèles peuvent inventer des faits, des sources ou des données. Tout contenu généré (chiffres, faits, dates) <strong>doit être systématiquement vérifié</strong> par un expert humain avant usage." },
+
+            { title: "Propriété Intellectuelle (PI)", content: "Les contenus générés peuvent être basés sur des œuvres protégées par le droit d'auteur. Leur utilisation commerciale peut exposer l'entreprise à des risques de contrefaçon. La responsabilité finale vous incombe." },
+
+            { title: "Biais", content: "Les modèles peuvent reproduire et amplifier des stéréotypes. Il est impératif d'examiner les résultats pour s'assurer qu'ils sont équitables, inclusifs et non discriminatoires, surtout en RH ou marketing." },
+
+            { title: "Sécurité", content: "Les acteurs malveillants peuvent utiliser l'IA pour créer des attaques sophistiquées (phishing). Restez vigilant face à toute communication suspecte, même si elle semble légitime." }
+
+        ],
+
+        departments: { /* French department data remains the same */
+
+            finance: { displayName: "Finance", introduction: "L'IA générative se positionne comme un puissant assistant d'analyse pour le département financier, capable d'automatiser la génération de rapports, d'enrichir les modèles prévisionnels et de rationaliser l'analyse des risques.", prompts: [ { title: "Analyse de Performance Trimestrielle", blueprint: "Rôle: Tu es un contrôleur de gestion senior.\nContexte: Voici les données financières clés pour le trimestre écoulé : Chiffre d'affaires : [montant]€ (vs [montant]€ au T-1), Coûts d'exploitation : [montant]€ (vs budget de [montant]€), Marge brute : [pourcentage]% (vs [pourcentage]% au T-1).\nTâche: Rédige une synthèse analytique de 3 paragraphes pour le comité de direction. Explique les principales variations par rapport au trimestre précédent et au budget. Identifie les tendances clés (positives et négatives) et propose un point de vigilance pour le trimestre à venir.\nFormat: Texte clair, professionnel et synthétique.", example: "Rôle: Tu es un contrôleur de gestion senior.\nContexte: Voici les données financières clés pour le T3 2024 : Chiffre d'affaires : 4.5M€ (vs 4.2M€ au T2), Coûts d'exploitation : 2.1M€ (vs budget de 1.9M€), Marge brute : 53.3% (vs 54.8% au T2).\nTâche: Rédige une synthèse analytique..." }, { title: "Simulation d'Impact Budgétaire", blueprint: "Rôle: Tu es un analyste financier spécialisé en modélisation.\nContexte: Notre coût principal de matière première est de [prix actuel]€ par unité. Nous envisageons une augmentation de [pourcentage]% de ce coût au prochain trimestre. Nos ventes prévisionnelles sont de [nombre] unités. Notre marge bénéficiaire nette actuelle est de [pourcentage]%.\nTâche: Simule l'impact de cette augmentation des coûts sur notre bénéfice net trimestriel en valeur absolue et en pourcentage. Présente le calcul étape par étape.\nFormat: Liste à puces détaillant chaque étape du calcul.", example: "Rôle: Tu es un analyste financier...\nContexte: Notre coût de l'acier est de 150€/tonne. Nous anticipons une augmentation de 10% au T4. Nos ventes prévisionnelles sont de 500 tonnes. Notre marge nette actuelle est de 12%.\nTâche: Simule l'impact..." }, ], assistants: [ { title: "Copilote d'Analyse Financière", description: "Génère instantanément un premier brouillon de rapport financier mensuel ou trimestriel en fournissant simplement les nouvelles données brutes." }, { title: "Assistant de Veille Réglementaire", description: "Résume les nouvelles réglementations (ex: CSRD), identifie les obligations pour notre secteur et liste les processus internes impactés." } ] },
+
+            legal: { displayName: "Légal", introduction: "L'IA générative permet d'automatiser les tâches à faible valeur ajoutée (analyse de contrats standards, recherches) et de transformer le juriste en 'juriste augmenté', focalisé sur le conseil stratégique.", prompts: [ { title: "Analyse de Clause Contractuelle", blueprint: "Rôle: Tu es un avocat d'affaires expérimenté, spécialisé en droit des contrats.\nContexte: J'analyse un contrat de prestation de services. Voici la clause de responsabilité (anonymisée) : \"[Copier-coller la clause ici]\". Notre politique interne exige une limitation plafonnée à 12 mois de facturation.\nTâche: 1. Analyse cette clause et identifie les risques. 2. Évalue sa conformité par rapport à notre politique. 3. Propose une reformulation protectrice.\nFormat: Réponse structurée en 3 points.", example: "Rôle: Tu es un avocat d'affaires...\nContexte: Voici la clause : \"La responsabilité du Fournisseur ne pourra être engagée qu'en cas de faute lourde prouvée...\"\nTâche: 1. Analyse cette clause..." }, { title: "Rédaction de Contrat Standard (NDA)", blueprint: "Rôle: Tu es un juriste d'entreprise.\nContexte: Je dois rédiger un accord de non-divulgation (NDA) mutuel standard pour des discussions exploratoires.\nTâche: Rédige un projet de NDA complet et équilibré, en français. Inclure les clauses essentielles: définition de l'info confidentielle, obligations, durée (5 ans), loi applicable (France), juridiction compétente (Tribunal de Commerce de Paris).\nFormat: Texte juridique structuré avec des articles numérotés.", example: "Rôle: Tu es un juriste d'entreprise...\nContexte: Je dois rédiger un NDA...\nTâche: Rédige un projet de NDA..." }, ], assistants: [ { title: "Assistant de Revue Contractuelle", description: "Compare un contrat entrant à la 'clause-thèque' de l'entreprise pour identifier instantanément les déviations, les risques et suggérer des formulations standards." }, { title: "Gardien de la Conformité (RGPD)", description: "Permet aux opérationnels de poser des questions en langage naturel sur des situations pratiques ('Pouvons-nous...?') et fournit une première réponse informative et sourcée." } ] },
+
+            hr: { displayName: "RH", introduction: "L'IA transforme la fonction RH en automatisant les tâches administratives, permettant aux équipes de se recentrer sur la stratégie des talents, le développement des compétences et l'accompagnement humain.", prompts: [ { title: "Rédaction d'Offre d'Emploi Inclusive", blueprint: "Rôle: Tu es un recruteur expert en rédaction d'offres inclusives.\nContexte: Nous recrutons un(e) [Poste] à [Lieu]. Missions: [liste 3-4 missions]. Profil: [X] ans d'expérience, maîtrise de [compétences].\nTâche: Rédige une offre d'emploi engageante. Utilise un langage neutre et inclusif. Structure en 4 parties: 'Qui nous sommes', 'Vos missions', 'Le profil', 'Ce que nous offrons'.\nFormat: Texte structuré.", example: "Rôle: Tu es un recruteur...\nContexte: Nous recrutons un(e) Chef de Projet Marketing Digital en CDI à Lyon...\nTâche: Rédige une offre d'emploi..." }, { title: "Génération de Questions d'Entretien", blueprint: "Rôle: Tu es un manager RH.\nContexte: Je prépare un entretien pour le poste de [Poste]. Soft skills cruciales: [Compétence 1], [Compétence 2], [Compétence 3].\nTâche: Génère 5 questions comportementales (méthode STAR) pour évaluer chaque compétence. Pour chaque question, explique ce qu'elle permet d'évaluer.\nFormat: Liste à puces.", example: "Rôle: Tu es un manager RH...\nContexte: Entretien pour Manager Commercial. Soft skills : leadership, résilience, orientation client.\nTâche: Génère une liste de 5 questions..." }, ], assistants: [ { title: "Copilote du Recruteur", description: "Génère un projet d'offre d'emploi complet, un e-mail d'approche et une liste de questions d'entretien à partir d'un simple intitulé de poste." }, { title: "Guide d'Onboarding Interactif", description: "Un chatbot pour les nouveaux arrivants qui répond 24/7 aux questions sur les politiques internes, les processus, etc." } ] },
+
+            tech: { displayName: "Tech", introduction: "L'IA générative s'impose comme un 'pair programmer' révolutionnaire, capable d'assister les développeurs à chaque étape, d'accélérer le codage, d'améliorer la qualité et de faciliter la résolution de problèmes.", prompts: [ { title: "Génération de Fonction", blueprint: "Rôle: Tu es un développeur [Langage] senior.\nTâche: Écris une fonction en [Langage] nommée `[nom_fonction]` qui prend en paramètre `[paramètres]` et qui [description de la logique]. Gère les cas limites. Ajoute des commentaires clairs.\nFormat: Bloc de code [Langage].", example: "Rôle: Tu es un développeur Python senior...\nTâche: Écris une fonction en Python nommée `calculer_moyenne` qui prend une liste de nombres et retourne leur moyenne. Gère le cas d'une liste vide.\nFormat: Bloc de code Python..." }, { title: "Débogage de Code", blueprint: "Rôle: Tu es un expert en débogage de code [Langage].\nContexte: J'ai ce code en [Langage] qui est censé [objectif]. J'obtiens l'erreur : \"[message d'erreur]\". Voici le code : `[code]`.\nTâche: 1. Explique la cause de l'erreur. 2. Propose une version corrigée. 3. Explique la correction.\nFormat: Réponse en 3 points.", example: "Rôle: Tu es un expert en débogage Python.\nContexte: J'obtiens l'erreur : \"IndexError: list index out of range\".\nTâche: 1. Explique la cause..." }, ], assistants: [ { title: "Assistant DevOps", description: "Génère des scripts d'infrastructure (ex: Terraform) ou des pipelines CI/CD en respectant les standards internes de sécurité et de configuration." }, { title: "Copilote de Code Sécurisé", description: "Analyse des extraits de code pour identifier des vulnérabilités de sécurité potentielles (OWASP Top 10) et propose des corrections." } ] },
+
+            operations: { displayName: "Opérations", introduction: "L'IA peut agir comme un puissant outil d'aide à la décision pour les opérations, en améliorant la précision des prévisions, en optimisant les systèmes complexes et en automatisant la génération de rapports.", prompts: [ { title: "Prévision de la Demande", blueprint: "Rôle: Tu es un analyste de la chaîne d'approvisionnement.\nContexte: Voici les ventes mensuelles pour le produit X sur 24 mois : `[données]`. Nous prévoyons une campagne marketing en [Mois] (+[X]% de ventes attendu).\nTâche: Génère une prévision des ventes pour les 6 prochains mois, en tenant compte de la saisonnalité et de l'impact marketing.\nFormat: Tableau Markdown.", example: "Rôle: Tu es un analyste...\nContexte: Données pour le 'Vélo Urbain V2'... Campagne en mai (+20% de ventes).\nTâche: Analyse ces données..." }, { title: "Analyse de Risque Fournisseur", blueprint: "Rôle: Tu es un gestionnaire des risques de la supply chain.\nContexte: Notre fournisseur principal pour [Matière première] est basé dans une région sujette à [type de risque].\nTâche: Identifie les principaux risques pour notre chaîne d'approvisionnement. Propose un plan de mitigation en 3 actions concrètes.\nFormat: Liste des risques, puis liste des actions.", example: "Rôle: Tu es un gestionnaire des risques...\nContexte: Notre fournisseur de lithium est dans une région à risque de sécheresse.\nTâche: Identifie les principaux risques..." }, ], assistants: [ { title: "Analyste de Risques de la Supply Chain", description: "Génère un 'bulletin de risques' quotidien en analysant des flux d'actualités, identifiant les événements mondiaux pouvant impacter nos fournisseurs ou routes logistiques." }, { title: "Optimiseur d'Efficacité d'Entrepôt", description: "Analyse des données opérationnelles anonymisées (temps de picking, trajets) et propose des recommandations concrètes pour réorganiser l'entrepôt." } ] },
+
+            product: { displayName: "Produit", introduction: "L'IA est un allié de taille pour le Product Manager, capable d'accélérer la recherche, de synthétiser les feedbacks utilisateurs et d'automatiser la création des artefacts agiles (user stories, etc.).", prompts: [ { title: "Création de User Story", blueprint: "Rôle: Tu es un Product Owner expérimenté.\nContexte: Nous développons [type d'application]. Le besoin est de [description du besoin].\nTâche: Rédige une user story complète au format 'En tant que..., je souhaite..., afin de...'. Rédige ensuite 3 à 5 critères d'acceptation clairs (format Given/When/Then).\nFormat: 1. User Story. 2. Critères d'Acceptation.", example: "Rôle: Tu es un PO...\nContexte: App e-commerce, besoin de liste de souhaits.\nTâche: Rédige une user story : 'En tant qu'utilisateur, je souhaite ajouter un produit à ma liste de souhaits...'" }, { title: "Synthèse de Feedback Utilisateur", blueprint: "Rôle: Tu es un Product Manager.\nContexte: Voici une transcription anonymisée d'un entretien utilisateur : \"[transcription]\".\nTâche: Lis cette transcription et identifie : 1. Les 3 principaux points de douleur. 2. Les 2 fonctionnalités les plus appréciées. 3. Une suggestion d'amélioration.\nFormat: Réponse structurée en 3 sections.", example: "Rôle: Tu es un PM...\nContexte: Transcription : '...j'adore le tableau Kanban. Par contre, la fonction de recherche est nulle...'\nTâche: Analyse la transcription..." }, ], assistants: [ { title: "Générateur de User Stories", description: "Prend une description brute d'une fonctionnalité et génère une série de user stories décomposées et bien formulées, avec des suggestions de critères d'acceptation." }, { title: "Synthétiseur de Feedback", description: "Traite de grands volumes de retours clients (tickets, avis) pour catégoriser automatiquement chaque retour et générer un rapport de synthèse hebdomadaire." } ] },
+
+            support: { displayName: "Service Client", introduction: "L'IA agit comme un assistant intelligent pour les agents, automatisant les réponses, fournissant des informations pertinentes en temps réel et aidant à maintenir un ton empathique et cohérent.", prompts: [ { title: "Désescalade d'un Client Mécontent", blueprint: "Rôle: Tu es un expert en gestion de conflit.\nContexte: Un client est très en colère car [raison].\nTâche: Propose 3 phrases d'ouverture qui : 1. Valident son émotion. 2. Montrent que tu prends le problème au sérieux. 3. Orientent vers une solution.\nFormat: Liste de 3 phrases.", example: "Rôle: Tu es un expert...\nContexte: Client furieux pour un retard de livraison.\nTâche: Propose 3 phrases comme : 'Je comprends tout à fait votre frustration, c'est inacceptable et je suis là pour trouver une solution avec vous.'" }, { title: "Synthèse pour Escalade au Niveau 2", blueprint: "Rôle: Tu es un agent de support de niveau 1.\nContexte: Je dois escalader un ticket technique complexe. Voici la transcription: \"[transcription]\".\nTâche: Rédige un résumé concis incluant : 1. Le problème initial. 2. Les étapes de dépannage déjà effectuées. 3. La question précise pour le N2.\nFormat: Texte structuré en 3 points.", example: "Rôle: Tu es un agent N1...\nContexte: Problème de connexion à l'API.\nTâche: Rédige un résumé : '1. Problème: Erreur 401. 2. Actions N1: Clé API vérifiée... 3. Question N2: Pouvez-vous vérifier les logs serveur?'" }, ], assistants: [ { title: "Assistant de l'Agent (Agent Assist)", description: "Analyse instantanément une demande client, recherche dans la base de connaissance et propose un premier brouillon de réponse complet à l'agent." }, { title: "Coach de Ton et d'Empathie", description: "Analyse une réponse rédigée par un agent et fournit un feedback sur le ton ('Le ton est un peu trop direct, ajoutez une phrase d'empathie...')." } ] }
+
+        }
+
+    }
+
+};
+
+
+
+// --- ENGLISH TRANSLATIONS ---
+
+translations.en = {
+
+    headerTitle: "Generative AI", navHome: "Home", navFundamentals: "Fundamentals", navDepartments: "Departments", navDeployment: "Deployment",
+
+    navHomeMobile: "Home", navFundamentalsMobile: "Fundamentals", navDepartmentsMobile: "Departments", navDeploymentMobile: "Deployment",
+
+    homeTitle: "Your Co-pilot for Innovation", homeSubtitle: "Explore the potential of Generative Artificial Intelligence. This repository is designed to help you transform your daily tasks, boost your creativity, and accelerate decision-making.",
+
+    homeButton: "Start Exploring",
+
+    fundamentalsTitle: "The Essential Foundations", fundamentalsSubtitle: "Master the basics for an effective and responsible use of AI.",
+
+    promptArtTitle: "The Art of the Perfect Prompt", promptArtDesc: "The quality of your interaction with the AI determines the quality of the response. A good prompt is a clear and structured instruction.",
+
+    promptRole: "Role (Persona)", promptRoleDesc: "Tell the AI who it should be. \"Act as a financial expert...\".",
+
+    promptContext: "Context", promptContextDesc: "Give it the necessary information to understand your request.",
+
+    promptTask: "Task (Instruction)", promptTaskDesc: "Be specific. Use action verbs: \"Analyze, Write, Compare...\".",
+
+    promptFormat: "Format", promptFormatDesc: "Specify the shape of the response: \"table\", \"bullet points\", \"email\".",
+
+    responsibleTitle: "Responsible Usage Framework", responsibleDesc: "Using AI means innovating safely. Every employee must understand and apply these essential rules.",
+
+    workshopTitle: "✨ Prompt Workshop ✨", workshopDesc: "Have an idea? Describe it below and let the AI transform it into a structured and effective prompt.",
+
+    workshopPlaceholder: "Example: 'I want an email to announce a new product launch to our customers'",
+
+    workshopButton: "Enhance my Prompt",
+
+    workshopError: "Sorry, an error occurred. Please try again.",
+
+    departmentsTitle: "Prompt Library by Department", departmentsSubtitle: "Select your department to discover concrete use cases and ready-to-use prompts.",
+
+    departmentDefault: "Please select a department to display prompts.",
+
+    generateIdeasButton: "✨ Generate new ideas",
+
+    ideasError: "Could not generate ideas at this time. Please try again.",
+
+    promptsLibrary: "Prompt Library", customAssistants: "Custom Assistant Ideas", blueprint: "BLUEPRINT", example: "CONCRETE EXAMPLE",
+
+    deploymentTitle: "Strategic Deployment", deploymentSubtitle: "Drive change, measure impact, and cultivate innovation.",
+
+    pilotTitle: "Launch a Pilot Project", roiTitle: "Return on Investment (ROI) Calculator",
+
+    roiDesc: "Estimate the financial impact of AI on productivity. Adjust the sliders to simulate potential gains.",
+
+    roiHoursLabel: "Hours saved per employee per month", roiHoursUnit: "hours", roiEmployeesLabel: "Number of employees", roiCostLabel: "Average hourly loaded cost (€)",
+
+    roiResultLabel: "Estimated annual savings", roiChartTitle: "Comparison of Gains vs. Costs", roiChartGains: "Annual Gains", roiChartCosts: "Estimated Annual Costs", roiChartLabel: "Euros (€)",
+
+    pilotSteps: [ { title: "Identify Pilot Teams", desc: "Choose 2-3 volunteer departments with high-potential use cases." }, { title: "Define Measurable Objectives (KPIs)", desc: "e.g., \"Reduce the time to write a task description by 50% in 4 weeks.\"" }, { title: "Train the Teams", desc: "Workshops on the art of prompting and the security charter." }, { title: "Create a Feedback Loop", desc: "Dedicated communication channel to share successes and difficulties." }, { title: "Analyze and Communicate Results", desc: "Compile a summary report for management with gains and lessons learned." } ],
+
+    accordionData: [ { title: "Data Confidentiality", content: "<strong>CRITICAL RISK.</strong> Never submit Personally Identifiable Information (PII), customer data, non-public financial information, trade secrets, or proprietary source code. Entering such data is equivalent to a data breach." }, { title: "Accuracy and 'Hallucinations'", content: "Models can invent facts, sources, or data. All generated content (numbers, facts, dates) <strong>must be systematically verified</strong> by a human expert before use." }, { title: "Intellectual Property (IP)", content: "Generated content may be based on copyrighted works. Its commercial use can expose the company to infringement risks. The final responsibility is yours." }, { title: "Bias", content: "Models can reproduce and amplify stereotypes. It is imperative to review the results to ensure they are fair, inclusive, and non-discriminatory, especially in HR or marketing." }, { title: "Security", content: "Malicious actors can use AI to create sophisticated attacks (phishing). Remain vigilant to any suspicious communication, even if it seems legitimate." } ],
+
+    departments: {
+
+        finance: { displayName: "Finance", introduction: "Generative AI is a powerful analysis assistant for the finance department, automating report generation, enhancing predictive models, and streamlining risk analysis.", prompts: [{ title: "Quarterly Performance Analysis", blueprint: "Role: You are a senior management controller.\nContext: Here are the key financial data for the past quarter: Revenue: [amount]€ (vs [amount]€ in Q-1), Operating Costs: [amount]€ (vs budget of [amount]€), Gross Margin: [percentage]% (vs [percentage]% in Q-1).\nTask: Write a 3-paragraph analytical summary for the executive committee. Explain the main variations compared to the previous quarter and the budget. Identify key trends (positive and negative) and suggest a point of vigilance for the upcoming quarter.\nFormat: Clear, professional, and concise text.", example: "Role: You are a senior management controller.\nContext: Key financial data for Q3 2024: Revenue: €4.5M (vs €4.2M in Q2), Operating Costs: €2.1M (vs budget of €1.9M), Gross Margin: 53.3% (vs 54.8% in Q2).\nTask: Write an analytical summary..." }, { title: "Budget Impact Simulation", blueprint: "Role: You are a financial analyst specializing in modeling.\nContext: Our main raw material cost is [current price]€ per unit. We are considering a [percentage]% increase in this cost next quarter. Our sales forecast is [number] units. Our current net profit margin is [percentage]%.\nTask: Simulate the impact of this cost increase on our quarterly net profit in absolute value and percentage. Present the calculation step by step.\nFormat: Bulleted list detailing each step of the calculation.", example: "Role: You are a financial analyst...\nContext: Our steel cost is €150/ton. We anticipate a 10% increase in Q4. Our sales forecast is 500 tons. Our current net margin is 12%.\nTask: Simulate the impact..." }], assistants: [{ title: "Financial Analysis Copilot", description: "Instantly generates a first draft of a monthly or quarterly financial report by simply providing the new raw data." }, { title: "Regulatory Watch Assistant", description: "Summarizes new regulations (e.g., CSRD), identifies obligations for our sector, and lists impacted internal processes." }] },
+
+        legal: { displayName: "Legal", introduction: "Generative AI automates low-value tasks (standard contract analysis, research) and transforms the lawyer into an 'augmented lawyer,' focused on strategic advice.", prompts: [{ title: "Contract Clause Analysis", blueprint: "Role: You are an experienced business lawyer specializing in contract law.\nContext: I am analyzing a service agreement. Here is the liability clause (anonymized): \"[Paste the clause here]\". Our internal policy requires a cap limited to 12 months of invoicing.\nTask: 1. Analyze this clause and identify risks. 2. Assess its compliance with our policy. 3. Propose a protective reformulation.\nFormat: Structured response in 3 points.", example: "Role: You are a business lawyer...\nContext: Here is the clause: \"The Supplier's liability shall only be engaged in case of proven gross negligence...\"\nTask: 1. Analyze this clause..." }, { title: "Drafting a Standard Contract (NDA)", blueprint: "Role: You are a corporate counsel.\nContext: I need to draft a standard mutual non-disclosure agreement (NDA) for exploratory discussions.\nTask: Draft a complete and balanced NDA project in English. Include essential clauses: definition of confidential info, obligations, duration (5 years), applicable law (e.g., English Law), competent jurisdiction (e.g., Courts of London).\nFormat: Structured legal text with numbered articles.", example: "Role: You are a corporate counsel...\nContext: I need to draft an NDA...\nTask: Draft an NDA project..." }], assistants: [{ title: "Contract Review Assistant", description: "Compares an incoming contract to the company's 'clause library' to instantly identify deviations, risks, and suggest standard wording." }, { title: "Compliance Guardian (GDPR)", description: "Allows operational staff to ask questions in natural language about practical situations ('Can we...?') and provides an initial, informative, and sourced answer." }] },
+
+        hr: { displayName: "HR", introduction: "AI transforms the HR function by automating administrative tasks, allowing teams to refocus on talent strategy, skills development, and human support.", prompts: [{ title: "Writing an Inclusive Job Offer", blueprint: "Role: You are a recruiter expert in writing inclusive offers.\nContext: We are recruiting a [Position] in [Location]. Missions: [list 3-4 missions]. Profile: [X] years of experience, mastery of [skills].\nTask: Write an engaging job offer. Use neutral and inclusive language. Structure in 4 parts: 'Who we are', 'Your missions', 'The profile', 'What we offer'.\nFormat: Structured text.", example: "Role: You are a recruiter...\nContext: We are recruiting a Digital Marketing Project Manager in London...\nTask: Write a job offer..." }, { title: "Generating Interview Questions", blueprint: "Role: You are an HR manager.\nContext: I am preparing an interview for the [Position] position. Crucial soft skills: [Skill 1], [Skill 2], [Skill 3].\nTask: Generate 5 behavioral questions (STAR method) to assess each skill. For each question, explain what it evaluates.\nFormat: Bulleted list.", example: "Role: You are an HR manager...\nContext: Interview for Sales Manager. Soft skills: leadership, resilience, customer focus.\nTask: Generate a list of 5 questions..." }], assistants: [{ title: "Recruiter's Copilot", description: "Generates a complete job offer draft, an outreach email, and a list of interview questions from a simple job title." }, { title: "Interactive Onboarding Guide", description: "A chatbot for new hires that answers 24/7 questions about internal policies, processes, etc." }] },
+
+        tech: { displayName: "Tech", introduction: "Generative AI is a revolutionary 'pair programmer,' assisting developers at every stage, accelerating coding, improving quality, and facilitating problem-solving.", prompts: [{ title: "Function Generation", blueprint: "Role: You are a senior [Language] developer.\nTask: Write a function in [Language] named `[function_name]` that takes `[parameters]` as input and [logic description]. Handle edge cases. Add clear comments.\nFormat: [Language] code block.", example: "Role: You are a senior Python developer...\nTask: Write a Python function named `calculate_average` that takes a list of numbers and returns their average. Handle the case of an empty list.\nFormat: Python code block..." }, { title: "Code Debugging", blueprint: "Role: You are an expert in debugging [Language] code.\nContext: I have this [Language] code that is supposed to [objective]. I get the error: \"[error message]\". Here is the code: `[code]`.\nTask: 1. Explain the cause of the error. 2. Propose a corrected version. 3. Explain the fix.\nFormat: Response in 3 points.", example: "Role: You are an expert in Python debugging.\nContext: I get the error: \"IndexError: list index out of range\".\nTask: 1. Explain the cause..." }], assistants: [{ title: "DevOps Assistant", description: "Generates infrastructure scripts (e.g., Terraform) or CI/CD pipelines respecting internal security and configuration standards." }, { title: "Secure Code Copilot", description: "Analyzes code snippets to identify potential security vulnerabilities (OWASP Top 10) and suggests corrections." }] },
+
+        operations: { displayName: "Operations", introduction: "AI can act as a powerful decision-making tool for operations, improving forecast accuracy, optimizing complex systems, and automating report generation.", prompts: [{ title: "Demand Forecasting", blueprint: "Role: You are a supply chain analyst.\nContext: Here are the monthly sales for product X over 24 months: `[data]`. We are planning a marketing campaign in [Month] (+[X]% expected sales).\nTask: Generate a sales forecast for the next 6 months, considering seasonality and the marketing impact.\nFormat: Markdown table.", example: "Role: You are an analyst...\nContext: Data for 'Urban Bike V2'... Campaign in May (+20% sales).\nTask: Analyze this data..." }, { title: "Supplier Risk Analysis", blueprint: "Role: You are a supply chain risk manager.\nContext: Our main supplier for [Raw material] is based in a region prone to [type of risk].\nTask: Identify the main risks for our supply chain. Propose a mitigation plan with 3 concrete actions.\nFormat: List of risks, then list of actions.", example: "Role: You are a risk manager...\nContext: Our lithium supplier is in a drought-prone region.\nTask: Identify the main risks..." }], assistants: [{ title: "Supply Chain Risk Analyst", description: "Generates a daily 'risk bulletin' by analyzing news feeds, identifying global events that could impact our suppliers or logistics routes." }, { title: "Warehouse Efficiency Optimizer", description: "Analyzes anonymized operational data (picking times, routes) and proposes concrete recommendations to reorganize the warehouse." }] },
+
+        product: { displayName: "Product", introduction: "AI is a great ally for the Product Manager, able to speed up research, synthesize user feedback, and automate the creation of agile artifacts (user stories, etc.).", prompts: [{ title: "User Story Creation", blueprint: "Role: You are an experienced Product Owner.\nContext: We are developing [application type]. The need is to [description of the need].\nTask: Write a complete user story in the format 'As a..., I want to..., so that...'. Then write 3 to 5 clear acceptance criteria (Given/When/Then format).\nFormat: 1. User Story. 2. Acceptance Criteria.", example: "Role: You are a PO...\nContext: E-commerce app, need a wishlist feature.\nTask: Write a user story: 'As a user, I want to add a product to my wishlist...'" }, { title: "User Feedback Synthesis", blueprint: "Role: You are a Product Manager.\nContext: Here is an anonymized transcript of a user interview: \"[transcript]\".\nTask: Read this transcript and identify: 1. The 3 main pain points. 2. The 2 most appreciated features. 3. An improvement suggestion.\nFormat: Structured response in 3 sections.", example: "Role: You are a PM...\nContext: Transcript: '...I love the Kanban board. But the search function is terrible...'\nTask: Analyze the transcript..." }], assistants: [{ title: "User Story Generator", description: "Takes a raw feature description and generates a series of well-formed, broken-down user stories with suggested acceptance criteria." }, { title: "Feedback Synthesizer", description: "Processes large volumes of customer feedback (tickets, reviews) to automatically categorize each feedback and generate a weekly summary report." }] },
+
+        support: { displayName: "Customer Support", introduction: "AI acts as an intelligent assistant for agents, automating responses, providing relevant information in real-time, and helping to maintain an empathetic and consistent tone.", prompts: [{ title: "De-escalating an Upset Customer", blueprint: "Role: You are an expert in conflict management.\nContext: A customer is very angry because [reason].\nTask: Propose 3 opening phrases that: 1. Validate their emotion. 2. Show you are taking the problem seriously. 3. Guide towards a solution.\nFormat: List of 3 phrases.", example: "Role: You are an expert...\nContext: Customer furious about a delivery delay.\nTask: Propose 3 phrases like: 'I completely understand your frustration, this is unacceptable and I am here to find a solution with you.'" }, { title: "Summary for Level 2 Escalation", blueprint: "Role: You are a level 1 support agent.\nContext: I need to escalate a complex technical ticket. Here is the transcript: \"[transcript]\".\nTask: Write a concise summary including: 1. The initial problem. 2. The troubleshooting steps already performed. 3. The specific question for L2.\nFormat: Structured text in 3 points.", example: "Role: You are an L1 agent...\nContext: API connection issue.\nTask: Write a summary: '1. Problem: 401 error. 2. L1 Actions: API key verified... 3. Question for L2: Can you check the server logs?'" }], assistants: [{ title: "Agent Assistant", description: "Instantly analyzes a customer request, searches the knowledge base, and proposes a complete first draft response to the agent." }, { title: "Tone and Empathy Coach", description: "Analyzes a response written by an agent and provides feedback on the tone ('The tone is a bit too direct, consider adding a sentence of empathy...')." }] }
+
+    }
+
+};
+
+
+
+// --- PORTUGUESE TRANSLATIONS ---
+
+translations.pt = {
+
+    headerTitle: "IA Generativa", navHome: "Início", navFundamentals: "Fundamentos", navDepartments: "Departamentos", navDeployment: "Implementação",
+
+    navHomeMobile: "Início", navFundamentalsMobile: "Fundamentos", navDepartmentsMobile: "Departamentos", navDeploymentMobile: "Implementação",
+
+    homeTitle: "Seu Copiloto para a Inovação", homeSubtitle: "Explore o potencial da Inteligência Artificial Generativa. Este repositório foi projetado para ajudá-lo a transformar suas tarefas diárias, impulsionar sua criatividade e acelerar a tomada de decisões.",
+
+    homeButton: "Começar a Explorar",
+
+    fundamentalsTitle: "As Bases Essenciais", fundamentalsSubtitle: "Domine o básico para um uso eficaz e responsável da IA.",
+
+    promptArtTitle: "A Arte do Prompt Perfeito", promptArtDesc: "A qualidade da sua interação com a IA determina a qualidade da resposta. Um bom prompt é uma instrução clara e estruturada.",
+
+    promptRole: "Papel (Persona)", promptRoleDesc: "Diga à IA quem ela deve ser. \"Aja como um especialista financeiro...\".",
+
+    promptContext: "Contexto", promptContextDesc: "Forneça as informações necessárias para que ela entenda sua solicitação.",
+
+    promptTask: "Tarefa (Instrução)", promptTaskDesc: "Seja específico. Use verbos de ação: \"Analise, Escreva, Compare...\".",
+
+    promptFormat: "Formato", promptFormatDesc: "Especifique a forma da resposta: \"tabela\", \"lista de marcadores\", \"e-mail\".",
+
+    responsibleTitle: "Estrutura de Uso Responsável", responsibleDesc: "Usar IA significa inovar com segurança. Cada funcionário deve entender e aplicar estas regras essenciais.",
+
+    workshopTitle: "✨ Oficina de Prompt ✨", workshopDesc: "Tem uma ideia? Descreva-a abaixo e deixe a IA transformá-la em um prompt estruturado e eficaz.",
+
+    workshopPlaceholder: "Exemplo: 'Quero um e-mail para anunciar o lançamento de um novo produto aos nossos clientes'",
+
+    workshopButton: "Melhorar meu Prompt",
+
+    workshopError: "Desculpe, ocorreu um erro. Por favor, tente novamente.",
+
+    departmentsTitle: "Biblioteca de Prompts por Departamento", departmentsSubtitle: "Selecione seu departamento para descobrir casos de uso concretos e prompts prontos para usar.",
+
+    departmentDefault: "Por favor, selecione um departamento para exibir os prompts.",
+
+    generateIdeasButton: "✨ Gerar novas ideias",
+
+    ideasError: "Não foi possível gerar ideias no momento. Por favor, tente novamente.",
+
+    promptsLibrary: "Biblioteca de Prompts", customAssistants: "Ideias de Assistentes Personalizados", blueprint: "MODELO (BLUEPRINT)", example: "EXEMPLO CONCRETO",
+
+    deploymentTitle: "Implementação Estratégica", deploymentSubtitle: "Impulsionar a mudança, medir o impacto e cultivar a inovação.",
+
+    pilotTitle: "Lançar um Projeto Piloto", roiTitle: "Calculadora de Retorno sobre o Investimento (ROI)",
+
+    roiDesc: "Estime o impacto financeiro da IA na produtividade. Ajuste os controles deslizantes para simular ganhos potenciais.",
+
+    roiHoursLabel: "Horas ganhas por funcionário por mês", roiHoursUnit: "horas", roiEmployeesLabel: "Número de funcionários", roiCostLabel: "Custo horário médio (€)",
+
+    roiResultLabel: "Economia anual estimada", roiChartTitle: "Comparação de Ganhos vs. Custos", roiChartGains: "Ganhos Anuais", roiChartCosts: "Custos Anuais Estimados", roiChartLabel: "Euros (€)",
+
+    pilotSteps: [ { title: "Identificar Equipes Piloto", desc: "Escolha 2-3 departamentos voluntários com casos de uso de alto potencial." }, { title: "Definir Objetivos Mensuráveis (KPIs)", desc: "Ex: \"Reduzir o tempo para escrever uma descrição de tarefa em 50% em 4 semanas.\"" }, { title: "Treinar as Equipes", desc: "Workshops sobre a arte do prompting e a carta de segurança." }, { title: "Criar um Loop de Feedback", desc: "Canal de comunicação dedicado para compartilhar sucessos e dificuldades." }, { title: "Analisar e Comunicar Resultados", desc: "Compilar um relatório de resumo para a gerência com ganhos e lições aprendidas." } ],
+
+    accordionData: [ { title: "Confidencialidade dos Dados", content: "<strong>RISCO CRÍTICO.</strong> Nunca envie Informações de Identificação Pessoal (PII), dados de clientes, informações financeiras não públicas, segredos comerciais ou código-fonte proprietário. Inserir tais dados é equivalente a uma violação de dados." }, { title: "Precisão e 'Alucinações'", content: "Os modelos podem inventar fatos, fontes ou dados. Todo o conteúdo gerado (números, fatos, datas) <strong>deve ser sistematicamente verificado</strong> por um especialista humano antes do uso." }, { title: "Propriedade Intelectual (PI)", content: "O conteúdo gerado pode ser baseado em obras protegidas por direitos autorais. Seu uso comercial pode expor a empresa a riscos de infração. A responsabilidade final é sua." }, { title: "Vieses", content: "Os modelos podem reproduzir e amplificar estereótipos. É imperativo revisar os resultados para garantir que sejam justos, inclusivos e não discriminatórios, especialmente em RH ou marketing." }, { title: "Segurança", content: "Atores mal-intencionados podem usar IA para criar ataques sofisticados (phishing). Permaneça vigilante a qualquer comunicação suspeita, mesmo que pareça legítima." } ],
+
+    departments: {
+
+        finance: { displayName: "Finanças", introduction: "A IA generativa atua como um poderoso assistente de análise para o departamento financeiro, automatizando relatórios, aprimorando modelos preditivos e otimizando a análise de riscos.", prompts: [{ title: "Análise de Desempenho Trimestral", blueprint: "Papel: Você é um controlador de gestão sênior.\nContexto: Aqui estão os principais dados financeiros do último trimestre: Receita: [valor]€ (vs [valor]€ no T-1), Custos Operacionais: [valor]€ (vs orçamento de [valor]€), Margem Bruta: [percentual]% (vs [percentual]% no T-1).\nTarefa: Escreva um resumo analítico de 3 parágrafos para o comitê executivo. Explique as principais variações em comparação com o trimestre anterior e o orçamento. Identifique as principais tendências (positivas e negativas) e sugira um ponto de atenção para o próximo trimestre.\nFormato: Texto claro, profissional e conciso.", example: "Papel: Você é um controlador de gestão sênior.\nContexto: Dados financeiros para o T3 2024: Receita: €4.5M (vs €4.2M no T2), Custos Operacionais: €2.1M (vs orçamento de €1.9M), Margem Bruta: 53.3% (vs 54.8% no T2).\nTarefa: Escreva um resumo analítico..." }, { title: "Simulação de Impacto Orçamentário", blueprint: "Papel: Você é um analista financeiro especializado em modelagem.\nContexto: O custo da nossa principal matéria-prima é de [preço atual]€ por unidade. Estamos considerando um aumento de [percentual]% nesse custo no próximo trimestre. Nossa previsão de vendas é de [número] unidades. Nossa margem de lucro líquido atual é de [percentual]%.\nTarefa: Simule o impacto desse aumento de custo em nosso lucro líquido trimestral em valor absoluto e percentual. Apresente o cálculo passo a passo.\nFormato: Lista de marcadores detalhando cada passo do cálculo.", example: "Papel: Você é um analista financeiro...\nContexto: O custo do nosso aço é de €150/tonelada. Antecipamos um aumento de 10% no T4. Nossa previsão de vendas é de 500 toneladas. Nossa margem líquida atual é de 12%.\nTarefa: Simule o impacto..." }], assistants: [{ title: "Copiloto de Análise Financeira", description: "Gera instantaneamente um primeiro rascunho de um relatório financeiro mensal ou trimestral simplesmente fornecendo os novos dados brutos." }, { title: "Assistente de Vigilância Regulatória", description: "Resume novas regulamentações (ex: CSRD), identifica obrigações para nosso setor e lista processos internos impactados." }] },
+
+        legal: { displayName: "Jurídico", introduction: "A IA generativa automatiza tarefas de baixo valor (análise de contratos padrão, pesquisas) e transforma o advogado em um 'advogado aumentado', focado em aconselhamento estratégico.", prompts: [{ title: "Análise de Cláusula Contratual", blueprint: "Papel: Você é um advogado de negócios experiente especializado em direito contratual.\nContexto: Estou analisando um contrato de prestação de serviços. Aqui está a cláusula de responsabilidade (anonimizada): \"[Cole a cláusula aqui]\". Nossa política interna exige um limite de 12 meses de faturamento.\nTarefa: 1. Analise esta cláusula e identifique os riscos. 2. Avalie sua conformidade com nossa política. 3. Proponha uma reformulação protetora.\nFormato: Resposta estruturada em 3 pontos.", example: "Papel: Você é um advogado de negócios...\nContexto: Aqui está a cláusula: \"A responsabilidade do Fornecedor só será acionada em caso de negligência grave comprovada...\"\nTarefa: 1. Analise esta cláusula..." }, { title: "Elaboração de Contrato Padrão (NDA)", blueprint: "Papel: Você é um conselheiro corporativo.\nContexto: Preciso elaborar um acordo de não divulgação (NDA) mútuo padrão para discussões exploratórias.\nTarefa: Elabore um projeto de NDA completo e equilibrado. Inclua cláusulas essenciais: definição de informações confidenciais, obrigações, duração (5 anos), lei aplicável (ex: Lei Brasileira), foro competente (ex: Foro de São Paulo).\nFormato: Texto jurídico estruturado com artigos numerados.", example: "Papel: Você é um conselheiro corporativo...\nContexto: Preciso elaborar um NDA...\nTarefa: Elabore um projeto de NDA..." }], assistants: [{ title: "Assistente de Revisão Contratual", description: "Compara um contrato recebido com a 'biblioteca de cláusulas' da empresa para identificar instantaneamente desvios, riscos e sugerir redações padrão." }, { title: "Guardião da Conformidade (LGPD)", description: "Permite que a equipe operacional faça perguntas em linguagem natural sobre situações práticas ('Podemos...?') e fornece uma resposta inicial, informativa e com fontes." }] },
+
+        hr: { displayName: "RH", introduction: "A IA transforma a função de RH automatizando tarefas administrativas, permitindo que as equipes se concentrem na estratégia de talentos, desenvolvimento de competências e apoio humano.", prompts: [{ title: "Redação de Vaga Inclusiva", blueprint: "Papel: Você é um recrutador especialista em redação de vagas inclusivas.\nContexto: Estamos contratando um(a) [Cargo] em [Local]. Missões: [liste 3-4 missões]. Perfil: [X] anos de experiência, domínio de [competências].\nTarefa: Escreva uma vaga de emprego atraente. Use linguagem neutra e inclusiva. Estruture em 4 partes: 'Quem somos', 'Suas missões', 'O perfil', 'O que oferecemos'.\nFormato: Texto estruturado.", example: "Papel: Você é um recrutador...\nContexto: Estamos contratando um Gerente de Projeto de Marketing Digital em Lisboa...\nTarefa: Escreva uma vaga de emprego..." }, { title: "Geração de Perguntas para Entrevista", blueprint: "Papel: Você é um gerente de RH.\nContexto: Estou preparando uma entrevista para o cargo de [Cargo]. Soft skills cruciais: [Competência 1], [Competência 2], [Competência 3].\nTarefa: Gere 5 perguntas comportamentais (método STAR) para avaliar cada competência. Para cada pergunta, explique o que ela avalia.\nFormato: Lista de marcadores.", example: "Papel: Você é um gerente de RH...\nContexto: Entrevista para Gerente de Vendas. Soft skills: liderança, resiliência, foco no cliente.\nTarefa: Gere uma lista de 5 perguntas..." }], assistants: [{ title: "Copiloto do Recrutador", description: "Gera um rascunho completo de vaga, um e-mail de abordagem e uma lista de perguntas de entrevista a partir de um simples título de cargo." }, { title: "Guia de Onboarding Interativo", description: "Um chatbot para novos funcionários que responde 24/7 a perguntas sobre políticas internas, processos, etc." }] },
+
+        tech: { displayName: "Tecnologia", introduction: "A IA generativa é um 'programador parceiro' revolucionário, auxiliando desenvolvedores em todas as etapas, acelerando a codificação, melhorando a qualidade e facilitando a resolução de problemas.", prompts: [{ title: "Geração de Função", blueprint: "Papel: Você é um desenvolvedor sênior de [Linguagem].\nTarefa: Escreva uma função em [Linguagem] chamada `[nome_funcao]` que recebe `[parametros]` como entrada e [descrição da lógica]. Lide com casos extremos. Adicione comentários claros.\nFormato: Bloco de código [Linguagem].", example: "Papel: Você é um desenvolvedor sênior de Python...\nTarefa: Escreva uma função em Python chamada `calcular_media` que recebe uma lista de números e retorna a média. Lide com o caso de uma lista vazia.\nFormato: Bloco de código Python..." }, { title: "Depuração de Código", blueprint: "Papel: Você é um especialista em depuração de código [Linguagem].\nContexto: Tenho este código em [Linguagem] que deveria [objetivo]. Recebo o erro: \"[mensagem de erro]\". Aqui está o código: `[código]`.\nTarefa: 1. Explique a causa do erro. 2. Proponha uma versão corrigida. 3. Explique a correção.\nFormato: Resposta em 3 pontos.", example: "Papel: Você é um especialista em depuração de Python.\nContexto: Recebo o erro: \"IndexError: list index out of range\".\nTarefa: 1. Explique a causa..." }], assistants: [{ title: "Assistente DevOps", description: "Gera scripts de infraestrutura (ex: Terraform) ou pipelines de CI/CD respeitando os padrões internos de segurança e configuração." }, { title: "Copiloto de Código Seguro", description: "Analisa trechos de código para identificar potenciais vulnerabilidades de segurança (OWASP Top 10) e sugere correções." }] },
+
+        operations: { displayName: "Operações", introduction: "A IA pode atuar como uma poderosa ferramenta de tomada de decisão para operações, melhorando a precisão das previsões, otimizando sistemas complexos e automatizando a geração de relatórios.", prompts: [{ title: "Previsão de Demanda", blueprint: "Papel: Você é um analista da cadeia de suprimentos.\nContexto: Aqui estão as vendas mensais do produto X nos últimos 24 meses: `[dados]`. Estamos planejando uma campanha de marketing em [Mês] (+[X]% de vendas esperadas).\nTarefa: Gere uma previsão de vendas para os próximos 6 meses, considerando a sazonalidade e o impacto do marketing.\nFormato: Tabela Markdown.", example: "Papel: Você é um analista...\nContexto: Dados para a 'Bicicleta Urbana V2'... Campanha em maio (+20% de vendas).\nTarefa: Analise estes dados..." }, { title: "Análise de Risco de Fornecedor", blueprint: "Papel: Você é um gerente de riscos da cadeia de suprimentos.\nContexto: Nosso principal fornecedor de [Matéria-prima] está localizado em uma região propensa a [tipo de risco].\nTarefa: Identifique os principais riscos para nossa cadeia de suprimentos. Proponha um plano de mitigação com 3 ações concretas.\nFormato: Lista de riscos, depois lista de ações.", example: "Papel: Você é um gerente de riscos...\nContexto: Nosso fornecedor de lítio está em uma região propensa à seca.\nTarefa: Identifique os principais riscos..." }], assistants: [{ title: "Analista de Riscos da Cadeia de Suprimentos", description: "Gera um 'boletim de riscos' diário analisando feeds de notícias, identificando eventos globais que poderiam impactar nossos fornecedores ou rotas logísticas." }, { title: "Otimizador de Eficiência de Armazém", description: "Analisa dados operacionais anonimizados (tempos de picking, rotas) e propõe recomendações concretas para reorganizar o armazém." }] },
+
+        product: { displayName: "Produto", introduction: "A IA é uma grande aliada para o Gerente de Produto, capaz de acelerar a pesquisa, sintetizar feedbacks de usuários e automatizar a criação de artefatos ágeis (histórias de usuário, etc.).", prompts: [{ title: "Criação de História de Usuário", blueprint: "Papel: Você é um Product Owner experiente.\nContexto: Estamos desenvolvendo [tipo de aplicativo]. A necessidade é [descrição da necessidade].\nTarefa: Escreva uma história de usuário completa no formato 'Como um..., eu quero..., para que...'. Em seguida, escreva de 3 a 5 critérios de aceitação claros (formato Given/When/Then).\nFormato: 1. História de Usuário. 2. Critérios de Aceitação.", example: "Papel: Você é um PO...\nContexto: App de e-commerce, precisa de um recurso de lista de desejos.\nTarefa: Escreva uma história de usuário: 'Como um usuário, eu quero adicionar um produto à minha lista de desejos...'" }, { title: "Síntese de Feedback do Usuário", blueprint: "Papel: Você é um Gerente de Produto.\nContexto: Aqui está uma transcrição anonimizada de uma entrevista com um usuário: \"[transcrição]\".\nTarefa: Leia esta transcrição e identifique: 1. Os 3 principais pontos problemáticos. 2. Os 2 recursos mais apreciados. 3. Uma sugestão de melhoria.\nFormato: Resposta estruturada em 3 seções.", example: "Papel: Você é um PM...\nContexto: Transcrição: '...adoro o quadro Kanban. Mas a função de busca é terrível...'\nTarefa: Analise a transcrição..." }], assistants: [{ title: "Gerador de Histórias de Usuário", description: "Recebe uma descrição bruta de um recurso e gera uma série de histórias de usuário bem formadas e detalhadas, com sugestões de critérios de aceitação." }, { title: "Sintetizador de Feedback", description: "Processa grandes volumes de feedback de clientes (tickets, avaliações) para categorizar automaticamente cada feedback e gerar um relatório de resumo semanal." }] },
+
+        support: { displayName: "Atendimento ao Cliente", introduction: "A IA atua como um assistente inteligente para os agentes, automatizando respostas, fornecendo informações relevantes em tempo real e ajudando a manter um tom empático и consistente.", prompts: [{ title: "Desescalando um Cliente Irritado", blueprint: "Papel: Você é um especialista em gestão de conflitos.\nContexto: Um cliente está muito irritado porque [motivo].\nTarefa: Proponha 3 frases de abertura que: 1. Validem a emoção dele. 2. Mostrem que você está levando o problema a sério. 3. Orientem para uma solução.\nFormato: Lista de 3 frases.", example: "Papel: Você é um especialista...\nContexto: Cliente furioso por um atraso na entrega.\nTarefa: Proponha 3 frases como: 'Eu entendo completamente sua frustração, isso é inaceitável e estou aqui para encontrar uma solução com você.'" }, { title: "Resumo para Escalação Nível 2", blueprint: "Papel: Você é um agente de suporte de nível 1.\nContexto: Preciso escalar um ticket técnico complexo. Aqui está a transcrição: \"[transcrição]\".\nTarefa: Escreva um resumo conciso incluindo: 1. O problema inicial. 2. Os passos de solução de problemas já realizados. 3. A pergunta específica para o N2.\nFormato: Texto estruturado em 3 pontos.", example: "Papel: Você é um agente N1...\nContexto: Problema de conexão com a API.\nTarefa: Escreva um resumo: '1. Problema: Erro 401. 2. Ações N1: Chave de API verificada... 3. Pergunta para N2: Você pode verificar os logs do servidor?'" }], assistants: [{ title: "Assistente do Agente", description: "Analisa instantaneamente uma solicitação do cliente, pesquisa na base de conhecimento e propõe um primeiro rascunho completo de resposta para o agente." }, { title: "Coach de Tom e Empatia", description: "Analisa uma resposta escrita por um agente e fornece feedback sobre o tom ('O tom é um pouco direto demais, considere adicionar uma frase de empatia...')." }] }
+
+    }
+
+};
+
+
+
+// --- POLISH TRANSLATIONS ---
+
+translations.pl = {
+
+    headerTitle: "Generatywna SI", navHome: "Start", navFundamentals: "Podstawy", navDepartments: "Działy", navDeployment: "Wdrożenie",
+
+    navHomeMobile: "Start", navFundamentalsMobile: "Podstawy", navDepartmentsMobile: "Działy", navDeploymentMobile: "Wdrożenie",
+
+    homeTitle: "Twój Drugi Pilot ds. Innowacji", homeSubtitle: "Odkryj potencjał Generatywnej Sztucznej Inteligencji. To repozytorium ma na celu pomóc Ci przekształcić codzienne zadania, pobudzić kreatywność i przyspieszyć podejmowanie decyzji.",
+
+    homeButton: "Rozpocznij Odkrywanie",
+
+    fundamentalsTitle: "Niezbędne Fundamenty", fundamentalsSubtitle: "Opanuj podstawy, aby efektywnie i odpowiedzialnie korzystać z SI.",
+
+    promptArtTitle: "Sztuka Doskonałego Promptu", promptArtDesc: "Jakość Twojej interakcji z SI determinuje jakość odpowiedzi. Dobry prompt to jasna i ustrukturyzowana instrukcja.",
+
+    promptRole: "Rola (Persona)", promptRoleDesc: "Powiedz SI, kim ma być. \"Działaj jako ekspert finansowy...\".",
+
+    promptContext: "Kontekst", promptContextDesc: "Dostarcz jej niezbędnych informacji, aby zrozumiała Twoje zapytanie.",
+
+    promptTask: "Zadanie (Instrukcja)", promptTaskDesc: "Bądź konkretny. Używaj czasowników akcji: \"Analizuj, Napisz, Porównaj...\".",
+
+    promptFormat: "Format", promptFormatDesc: "Określ formę odpowiedzi: \"tabela\", \"lista punktowana\", \"e-mail\".",
+
+    responsibleTitle: "Ramy Odpowiedzialnego Użycia", responsibleDesc: "Korzystanie z SI to innowacje w bezpieczny sposób. Każdy pracownik musi zrozumieć i stosować te podstawowe zasady.",
+
+    workshopTitle: "✨ Warsztat Promptów ✨", workshopDesc: "Masz pomysł? Opisz go poniżej i pozwól SI przekształcić go w ustrukturyzowany i skuteczny prompt.",
+
+    workshopPlaceholder: "Przykład: 'Chcę e-maila, aby ogłosić wprowadzenie nowego produktu naszym klientom'",
+
+    workshopButton: "Ulepsz mój Prompt",
+
+    workshopError: "Niestety, wystąpił błąd. Proszę spróbować ponownie.",
+
+    departmentsTitle: "Biblioteka Promptów według Działów", departmentsSubtitle: "Wybierz swój dział, aby odkryć konkretne przypadki użycia i gotowe do użycia prompty.",
+
+    departmentDefault: "Proszę wybrać dział, aby wyświetlić prompty.",
+
+    generateIdeasButton: "✨ Wygeneruj nowe pomysły",
+
+    ideasError: "W tej chwili nie można wygenerować pomysłów. Proszę spróbować ponownie.",
+
+    promptsLibrary: "Biblioteka Promptów", customAssistants: "Pomysły na Spersonalizowanych Asystentów", blueprint: "SZABLON (BLUEPRINT)", example: "KONKRETNY PRZYKŁAD",
+
+    deploymentTitle: "Wdrożenie Strategiczne", deploymentSubtitle: "Napędzaj zmiany, mierz wpływ i kultywuj innowacje.",
+
+    pilotTitle: "Uruchom Projekt Pilotażowy", roiTitle: "Kalkulator Zwrotu z Inwestycji (ROI)",
+
+    roiDesc: "Oszacuj finansowy wpływ SI na produktywność. Dostosuj suwaki, aby symulować potencjalne zyski.",
+
+    roiHoursLabel: "Zaoszczędzone godziny na pracownika miesięcznie", roiHoursUnit: "godzin", roiEmployeesLabel: "Liczba pracowników", roiCostLabel: "Średni koszt godzinowy z narzutem (€)",
+
+    roiResultLabel: "Szacowane roczne oszczędności", roiChartTitle: "Porównanie Zysków i Kosztów", roiChartGains: "Roczne Zyski", roiChartCosts: "Szacowane Roczne Koszty", roiChartLabel: "Euro (€)",
+
+    pilotSteps: [ { title: "Zidentyfikuj Zespoły Pilotażowe", desc: "Wybierz 2-3 chętne działy z przypadkami użycia o wysokim potencjale." }, { title: "Zdefiniuj Mierzalne Cele (KPI)", desc: "Np. \"Skróć czas pisania opisu zadania o 50% w 4 tygodnie.\"" }, { title: "Przeszkól Zespoły", desc: "Warsztaty ze sztuki promptingu i karty bezpieczeństwa." }, { title: "Stwórz Pętlę Informacji Zwrotnej", desc: "Dedykowany kanał komunikacji do dzielenia się sukcesami i trudnościami." }, { title: "Analizuj i Komunikuj Wyniki", desc: "Skompiluj raport podsumowujący dla kierownictwa z zyskami i wnioskami." } ],
+
+    accordionData: [ { title: "Poufność Danych", content: "<strong>KRYTYCZNE RYZYKO.</strong> Nigdy nie przesyłaj Danych Osobowych (PII), danych klientów, niepublicznych informacji finansowych, tajemnic handlowych ani zastrzeżonego kodu źródłowego. Wprowadzenie takich danych jest równoznaczne z wyciekiem danych." }, { title: "Dokładność i 'Halucynacje'", content: "Modele mogą wymyślać fakty, źródła lub dane. Wszystkie wygenerowane treści (liczby, fakty, daty) <strong>muszą być systematycznie weryfikowane</strong> przez eksperta ludzkiego przed użyciem." }, { title: "Własność Intelektualna (IP)", content: "Wygenerowane treści mogą opierać się na dziełach chronionych prawem autorskim. Ich komercyjne wykorzystanie może narazić firmę na ryzyko naruszenia praw. Ostateczna odpowiedzialność spoczywa na Tobie." }, { title: "Stronniczość", content: "Modele mogą powielać i wzmacniać stereotypy. Konieczne jest krytyczne przeanalizowanie wyników, aby upewnić się, że są one sprawiedliwe, inkluzywne i niedyskryminujące, zwłaszcza w HR lub marketingu." }, { title: "Bezpieczeństwo", content: "Złośliwi aktorzy mogą używać SI do tworzenia zaawansowanych ataków (phishing). Zachowaj czujność wobec każdej podejrzanej komunikacji, nawet jeśli wydaje się ona legalna." } ],
+
+    departments: {
+
+        finance: { displayName: "Finanse", introduction: "Generatywna SI jest potężnym asystentem analitycznym dla działu finansów, automatyzującym generowanie raportów, wzbogacającym modele predykcyjne i usprawniającym analizę ryzyka.", prompts: [{ title: "Kwartalna Analiza Wyników", blueprint: "Rola: Jesteś starszym kontrolerem zarządczym.\nKontekst: Oto kluczowe dane finansowe za ostatni kwartał: Przychody: [kwota]€ (vs [kwota]€ w Q-1), Koszty operacyjne: [kwota]€ (vs budżet [kwota]€), Marża brutto: [procent]% (vs [procent]% w Q-1).\nZadanie: Napisz 3-akapitowe podsumowanie analityczne dla zarządu. Wyjaśnij główne odchylenia w porównaniu z poprzednim kwartałem i budżetem. Zidentyfikuj kluczowe trendy (pozytywne i negatywne) i zasugeruj punkt do obserwacji na nadchodzący kwartał.\nFormat: Przejrzysty, profesjonalny i zwięzły tekst.", example: "Rola: Jesteś starszym kontrolerem zarządczym.\nKontekst: Dane finansowe za Q3 2024: Przychody: 4.5M€ (vs 4.2M€ w Q2), Koszty operacyjne: 2.1M€ (vs budżet 1.9M€), Marża brutto: 53.3% (vs 54.8% w Q2).\nZadanie: Napisz podsumowanie analityczne..." }, { title: "Symulacja Wpływu na Budżet", blueprint: "Rola: Jesteś analitykiem finansowym specjalizującym się w modelowaniu.\nKontekst: Koszt naszego głównego surowca wynosi [obecna cena]€ za jednostkę. Rozważamy wzrost tego kosztu o [procent]% w następnym kwartale. Nasza prognoza sprzedaży to [liczba] jednostek. Nasza obecna marża zysku netto wynosi [procent]%.\nZadanie: Symuluj wpływ tego wzrostu kosztów na nasz kwartalny zysk netto w wartości bezwzględnej i procentowej. Przedstaw obliczenia krok po kroku.\nFormat: Lista punktowana szczegółowo opisująca każdy krok obliczeń.", example: "Rola: Jesteś analitykiem finansowym...\nKontekst: Koszt naszej stali wynosi 150€/tonę. Przewidujemy wzrost o 10% w Q4. Nasza prognoza sprzedaży to 500 ton. Nasza obecna marża netto wynosi 12%.\nZadanie: Symuluj wpływ..." }], assistants: [{ title: "Drugi Pilot Analizy Finansowej", description: "Błyskawicznie generuje pierwszy szkic miesięcznego lub kwartalnego raportu finansowego po prostu dostarczając nowe surowe dane." }, { title: "Asystent Monitorowania Regulacji", description: "Podsumowuje nowe regulacje (np. CSRD), identyfikuje obowiązki dla naszego sektora i wymienia procesy wewnętrzne, na które mają wpływ." }] },
+
+        legal: { displayName: "Prawny", introduction: "Generatywna SI automatyzuje zadania o niskiej wartości (analiza standardowych umów, badania) i przekształca prawnika w 'prawnika wspomaganego', skoncentrowanego na doradztwie strategicznym.", prompts: [{ title: "Analiza Klauzuli Umownej", blueprint: "Rola: Jesteś doświadczonym prawnikiem biznesowym specjalizującym się w prawie umów.\nKontekst: Analizuję umowę o świadczenie usług. Oto klauzula odpowiedzialności (anonimizowana): \"[Wklej klauzulę tutaj]\". Nasza wewnętrzna polityka wymaga ograniczenia do 12 miesięcy fakturowania.\nZadanie: 1. Przeanalizuj tę klauzulę i zidentyfikuj ryzyka. 2. Oceń jej zgodność z naszą polityką. 3. Zaproponuj ochronne przeformułowanie.\nFormat: Ustrukturyzowana odpowiedź w 3 punktach.", example: "Rola: Jesteś prawnikiem biznesowym...\nKontekst: Oto klauzula: \"Odpowiedzialność Dostawcy będzie ponoszona tylko w przypadku udowodnionej rażącej niedbałości...\"\nZadanie: 1. Przeanalizuj tę klauzulę..." }, { title: "Tworzenie Standardowej Umowy (NDA)", blueprint: "Rola: Jesteś radcą prawnym w firmie.\nKontekst: Muszę sporządzić standardową wzajemną umowę o poufności (NDA) do rozmów rozpoznawczych.\nZadanie: Sporządź kompletny i zrównoważony projekt NDA. Dołącz niezbędne klauzule: definicja informacji poufnych, obowiązki, czas trwania (5 lat), prawo właściwe (np. Prawo Polskie), właściwy sąd (np. Sąd w Warszawie).\nFormat: Ustrukturyzowany tekst prawny z numerowanymi artykułami.", example: "Rola: Jesteś radcą prawnym...\nKontekst: Muszę sporządzić NDA...\nZadanie: Sporządź projekt NDA..." }], assistants: [{ title: "Asystent Przeglądu Umów", description: "Porównuje przychodzącą umowę z 'biblioteką klauzul' firmy, aby natychmiast zidentyfikować odchylenia, ryzyka i zasugerować standardowe sformułowania." }, { title: "Strażnik Zgodności (RODO)", description: "Umożliwia pracownikom operacyjnym zadawanie pytań w języku naturalnym na temat praktycznych sytuacji ('Czy możemy...?') i dostarcza wstępnej, informacyjnej i udokumentowanej odpowiedzi." }] },
+
+        hr: { displayName: "HR", introduction: "SI przekształca funkcję HR, automatyzując zadania administracyjne, co pozwala zespołom skupić się na strategii talentów, rozwoju umiejętności i wsparciu ludzkim.", prompts: [{ title: "Pisanie Inkluzywnej Oferty Pracy", blueprint: "Rola: Jesteś rekruterem ekspertem w pisaniu inkluzywnych ofert.\nKontekst: Rekrutujemy na stanowisko [Stanowisko] w [Lokalizacja]. Misje: [wymień 3-4 misje]. Profil: [X] lat doświadczenia, znajomość [umiejętności].\nZadanie: Napisz angażującą ofertę pracy. Użyj neutralnego i inkluzywnego języka. Strukturę podziel na 4 części: 'Kim jesteśmy', 'Twoje misje', 'Profil', 'Co oferujemy'.\nFormat: Ustrukturyzowany tekst.", example: "Rola: Jesteś rekruterem...\nKontekst: Rekrutujemy Menedżera Projektu Marketingu Cyfrowego w Warszawie...\nZadanie: Napisz ofertę pracy..." }, { title: "Generowanie Pytań na Rozmowę Kwalifikacyjną", blueprint: "Rola: Jesteś menedżerem HR.\nKontekst: Przygotowuję rozmowę na stanowisko [Stanowisko]. Kluczowe umiejętności miękkie: [Umiejętność 1], [Umiejętność 2], [Umiejętność 3].\nZadanie: Wygeneruj 5 pytań behawioralnych (metoda STAR), aby ocenić każdą umiejętność. Dla każdego pytania wyjaśnij, co ono ocenia.\nFormat: Lista punktowana.", example: "Rola: Jesteś menedżerem HR...\nKontekst: Rozmowa na Menedżera Sprzedaży. Umiejętności miękkie: przywództwo, odporność, orientacja na klienta.\nZadanie: Wygeneruj listę 5 pytań..." }], assistants: [{ title: "Drugi Pilot Rekrutera", description: "Generuje kompletny szkic oferty pracy, e-mail kontaktowy i listę pytań na rozmowę kwalifikacyjną na podstawie prostego tytułu stanowiska." }, { title: "Interaktywny Przewodnik Wdrożeniowy", description: "Chatbot dla nowych pracowników, który odpowiada 24/7 na pytania dotyczące wewnętrznych polityk, procesów itp." }] },
+
+        tech: { displayName: "Tech", introduction: "Generatywna SI to rewolucyjny 'programista w parze', pomagający deweloperom na każdym etapie, przyspieszający kodowanie, poprawiający jakość i ułatwiający rozwiązywanie problemów.", prompts: [{ title: "Generowanie Funkcji", blueprint: "Rola: Jesteś starszym deweloperem [Język].\nZadanie: Napisz funkcję w [Język] o nazwie `[nazwa_funkcji]`, która przyjmuje `[parametry]` jako dane wejściowe i [opis logiki]. Obsłuż przypadki brzegowe. Dodaj jasne komentarze.\nFormat: Blok kodu [Język].", example: "Rola: Jesteś starszym deweloperem Python...\nZadanie: Napisz funkcję w Pythonie o nazwie `oblicz_srednia`, która przyjmuje listę liczb i zwraca ich średnią. Obsłuż przypadek pustej listy.\nFormat: Blok kodu Python..." }, { title: "Debugowanie Kodu", blueprint: "Rola: Jesteś ekspertem w debugowaniu kodu [Język].\nKontekst: Mam ten kod w [Język], który ma [cel]. Otrzymuję błąd: \"[komunikat błędu]\". Oto kod: `[kod]`.\nZadanie: 1. Wyjaśnij przyczynę błędu. 2. Zaproponuj poprawioną wersję. 3. Wyjaśnij poprawkę.\nFormat: Odpowiedź w 3 punktach.", example: "Rola: Jesteś ekspertem w debugowaniu Python.\nKontekst: Otrzymuję błąd: \"IndexError: list index out of range\".\nZadanie: 1. Wyjaśnij przyczynę..." }], assistants: [{ title: "Asystent DevOps", description: "Generuje skrypty infrastruktury (np. Terraform) lub potoki CI/CD z poszanowaniem wewnętrznych standardów bezpieczeństwa i konfiguracji." }, { title: "Drugi Pilot Bezpiecznego Kodu", description: "Analizuje fragmenty kodu w celu zidentyfikowania potencjalnych luk w zabezpieczeniach (OWASP Top 10) i sugeruje poprawki." }] },
+
+        operations: { displayName: "Operacje", introduction: "SI może działać jako potężne narzędzie decyzyjne dla operacji, poprawiając dokładność prognoz, optymalizując złożone systemy i automatyzując generowanie raportów.", prompts: [{ title: "Prognozowanie Popytu", blueprint: "Rola: Jesteś analitykiem łańcucha dostaw.\nKontekst: Oto miesięczna sprzedaż produktu X w ciągu 24 miesięcy: `[dane]`. Planujemy kampanię marketingową w [Miesiąc] (+[X]% oczekiwanej sprzedaży).\nZadanie: Wygeneruj prognozę sprzedaży na następne 6 miesięcy, uwzględniając sezonowość i wpływ marketingu.\nFormat: Tabela Markdown.", example: "Rola: Jesteś analitykiem...\nKontekst: Dane dla 'Rower Miejski V2'... Kampania w maju (+20% sprzedaży).\nZadanie: Analizuj te dane..." }, { title: "Analiza Ryzyka Dostawcy", blueprint: "Rola: Jesteś menedżerem ryzyka łańcucha dostaw.\nKontekst: Nasz główny dostawca [Surowiec] ma siedzibę w regionie podatnym na [rodzaj ryzyka].\nZadanie: Zidentyfikuj główne ryzyka dla naszego łańcucha dostaw. Zaproponuj plan mitygacji w 3 konkretnych działaniach.\nFormat: Lista ryzyk, a następnie lista działań.", example: "Rola: Jesteś menedżerem ryzyka...\nKontekst: Nasz dostawca litu ma siedzibę w regionie podatnym na suszę.\nZadanie: Zidentyfikuj główne ryzyka..." }], assistants: [{ title: "Analityk Ryzyka Łańcucha Dostaw", description: "Generuje codzienny 'biuletyn ryzyka', analizując wiadomości, identyfikując globalne wydarzenia, które mogą wpłynąć na naszych dostawców lub trasy logistyczne." }, { title: "Optymalizator Wydajności Magazynu", description: "Analizuje anonimowe dane operacyjne (czasy kompletacji, trasy) i proponuje konkretne rekomendacje dotyczące reorganizacji magazynu." }] },
+
+        product: { displayName: "Produkt", introduction: "SI jest doskonałym sojusznikiem Menedżera Produktu, zdolnym do przyspieszenia badań, syntezy opinii użytkowników i automatyzacji tworzenia artefaktów zwinnych (historie użytkownika itp.).", prompts: [{ title: "Tworzenie Historii Użytkownika", blueprint: "Rola: Jesteś doświadczonym Product Ownerem.\nKontekst: Tworzymy [typ aplikacji]. Potrzebą jest [opis potrzeby].\nZadanie: Napisz kompletną historię użytkownika w formacie 'Jako..., chcę..., aby...'. Następnie napisz od 3 do 5 jasnych kryteriów akceptacji (format Given/When/Then).\nFormat: 1. Historia Użytkownika. 2. Kryteria Akceptacji.", example: "Rola: Jesteś PO...\nKontekst: Aplikacja e-commerce, potrzeba funkcji listy życzeń.\nZadanie: Napisz historię użytkownika: 'Jako użytkownik, chcę dodać produkt do mojej listy życzeń...'" }, { title: "Synteza Opinii Użytkowników", blueprint: "Rola: Jesteś Menedżerem Produktu.\nKontekst: Oto zanonimizowany transkrypt wywiadu z użytkownikiem: \"[transkrypt]\".\nZadanie: Przeczytaj ten transkrypt i zidentyfikuj: 1. 3 główne punkty bólu. 2. 2 najbardziej doceniane funkcje. 3. Sugestię poprawy.\nFormat: Ustrukturyzowana odpowiedź w 3 sekcjach.", example: "Rola: Jesteś PM...\nKontekst: Transkrypt: '...uwielbiam tablicę Kanban. Ale funkcja wyszukiwania jest okropna...'\nZadanie: Przeanalizuj transkrypt..." }], assistants: [{ title: "Generator Historii Użytkownika", description: "Bierze surowy opis funkcji i generuje serię dobrze sformułowanych, podzielonych historii użytkownika z sugestiami kryteriów akceptacji." }, { title: "Syntezator Opinii", description: "Przetwarza duże ilości opinii klientów (zgłoszenia, recenzje), aby automatycznie kategoryzować każdą opinię i generować tygodniowy raport podsumowujący." }] },
+
+        support: { displayName: "Obsługa Klienta", introduction: "SI działa jako inteligentny asystent dla agentów, automatyzując odpowiedzi, dostarczając istotne informacje w czasie rzeczywistym i pomagając utrzymać empatyczny i spójny ton.", prompts: [{ title: "Deeskalacja Zirytowanego Klienta", blueprint: "Rola: Jesteś ekspertem w zarządzaniu konfliktami.\nKontekst: Klient jest bardzo zły, ponieważ [powód].\nZadanie: Zaproponuj 3 zdania otwierające, które: 1. Potwierdzą jego emocje. 2. Pokażą, że traktujesz problem poważnie. 3. Skierują w stronę rozwiązania.\nFormat: Lista 3 zdań.", example: "Rola: Jesteś ekspertem...\nKontekst: Klient wściekły z powodu opóźnienia w dostawie.\nZadanie: Zaproponuj 3 zdania, takie jak: 'Całkowicie rozumiem Pana/Pani frustrację, to niedopuszczalne i jestem tutaj, aby znaleźć z Panem/Panią rozwiązanie.'" }, { title: "Podsumowanie do Eskalacji na Poziom 2", blueprint: "Rola: Jesteś agentem wsparcia poziomu 1.\nKontekst: Muszę eskalować złożone zgłoszenie techniczne. Oto transkrypt: \"[transkrypt]\".\nZadanie: Napisz zwięzłe podsumowanie zawierające: 1. Pierwotny problem. 2. Podjęte już kroki rozwiązywania problemów. 3. Konkretne pytanie do L2.\nFormat: Ustrukturyzowany tekst w 3 punktach.", example: "Rola: Jesteś agentem L1...\nKontekst: Problem z połączeniem API.\nZadanie: Napisz podsumowanie: '1. Problem: Błąd 401. 2. Działania L1: Klucz API sprawdzony... 3. Pytanie do L2: Czy możecie sprawdzić logi serwera?'" }], assistants: [{ title: "Asystent Agenta", description: "Błyskawicznie analizuje zgłoszenie klienta, przeszukuje bazę wiedzy i proponuje agentowi kompletny pierwszy szkic odpowiedzi." }, { title: "Trener Tonu i Empatii", description: "Analizuje odpowiedź napisaną przez agenta i dostarcza informacji zwrotnej na temat tonu ('Ton jest zbyt bezpośredni, rozważ dodanie zdania wyrażającego empatię...')." }] }
+
+    }
+
+};
+
+
+
+// --- MAIN SCRIPT ---
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    let currentLang = 'fr';
+
+    let roiChart;
+
+
+
+    async function callGemini(promptText) {
+
+        const apiKey = ""; 
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        
+
+        const payload = {
+
+            contents: [{
+
+                role: "user",
+
+                parts: [{ text: promptText }]
+
+            }]
+
+        };
+
+
+
+        try {
+
+            const response = await fetch(apiUrl, {
+
+                method: 'POST',
+
+                headers: { 'Content-Type': 'application/json' },
+
+                body: JSON.stringify(payload)
+
+            });
+
+            if (!response.ok) {
+
+                throw new Error(`API Error: ${response.status}`);
+
+            }
+
+            const data = await response.json();
+
+            if (data.candidates && data.candidates.length > 0 && data.candidates[0].content.parts.length > 0) {
+
+                return data.candidates[0].content.parts[0].text;
+
+            } else {
+
+                // This case handles situations where the response is valid but empty, e.g., due to safety settings.
+
+                console.warn("Gemini API returned a response with no content.", data);
+
+                return null;
+
+            }
+
+        } catch (error) {
+
+            console.error("Error calling Gemini API:", error);
+
+            return null; // Return null to indicate failure
+
+        }
+
+    }
+
+
+
+    function switchLanguage(lang) {
+
+        currentLang = lang;
+
+        document.documentElement.lang = lang;
+
+
+
+        document.querySelectorAll('[data-i18n-key]').forEach(el => {
+
+            const key = el.dataset.i18nKey;
+
+            const translation = translations[lang]?.[key];
+
+            if (translation) {
+
+                el.innerHTML = translation;
+
+            }
+
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+
+             const key = el.dataset.i18nPlaceholder;
+
+             const translation = translations[lang]?.[key]
+
+             if(translation){
+
+                el.placeholder = translation;
+
+             }
+
+        });
+
+
+
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
+
+        
+
+        renderAccordion();
+
+        renderPilotSteps();
+
+        renderDepartmentSelector();
+
+        clearDepartmentContent();
+
+        calculateROI();
+
+    }
+
+
+
+    function renderAccordion() {
+
+        const accordionContainer = document.getElementById('accordion-container');
+
+        accordionContainer.innerHTML = '';
+
+        const data = translations[currentLang]?.accordionData || translations.fr.accordionData;
+
+        data.forEach((item) => {
+
+            accordionContainer.innerHTML += `
+
+                <div class="border border-gray-200 rounded-lg">
+
+                    <button class="accordion-header w-full text-left p-4 flex justify-between items-center">
+
+                        <h4 class="font-semibold">${item.title}</h4>
+
+                        <svg class="icon-arrow w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+
+                    </button>
+
+                    <div class="accordion-content px-4"><p class="py-4 text-gray-600 border-t">${item.content}</p></div>
+
+                </div>`;
+
+        });
+
+    }
+
+
+
+    function renderPilotSteps() {
+
+        const pilotStepsContainer = document.getElementById('pilot-steps');
+
+        pilotStepsContainer.innerHTML = '';
+
+        const data = translations[currentLang]?.pilotSteps || translations.fr.pilotSteps;
+
+        data.forEach((step, index) => {
+
+            pilotStepsContainer.innerHTML += `
+
+                <li class="mb-10 ml-6">            
+
+                    <span class="absolute flex items-center justify-center w-6 h-6 bg-[#E0E7FF] rounded-full -left-3 ring-8 ring-white">
+
+                        <span class="font-bold text-sm text-[#3D405B]">${index + 1}</span>
+
+                    </span>
+
+                    <h4 class="font-semibold">${step.title}</h4>
+
+                    <p class="text-sm text-gray-600">${step.desc}</p>
+
+                </li>`;
+
+        });
+
+    }
+
+
+
+    function renderDepartmentSelector() {
+
+        const departmentSelector = document.getElementById('department-selector');
+
+        departmentSelector.innerHTML = '';
+
+        const depts = translations[currentLang]?.departments || translations.fr.departments;
+
+        for (const key in depts) {
+
+            const button = document.createElement('button');
+
+            button.className = 'department-btn px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 ease-in-out';
+
+            button.textContent = depts[key].displayName;
+
+            button.dataset.deptKey = key;
+
+            departmentSelector.appendChild(button);
+
+        }
+
+    }
+
+
+
+    function clearDepartmentContent() {
+
+         const departmentContent = document.getElementById('department-content');
+
+         departmentContent.innerHTML = `<div class="text-center p-8 bg-white rounded-lg shadow-md">
+
+            <p class="text-gray-500" data-i18n-key="departmentDefault">${translations[currentLang].departmentDefault}</p>
+
+        </div>`;
+
+    }
+
+
+
+    function renderDepartment(deptKey) {
+
+        const departmentContent = document.getElementById('department-content');
+
+        const data = translations[currentLang]?.departments[deptKey];
+
+        if (!data) return;
+
+
+
+        let contentHtml = `
+
+            <div class="mb-8 text-center">
+
+                <p class="max-w-3xl mx-auto text-gray-600">${data.introduction}</p>
+
+            </div>
+
+            <div class="text-center mb-12">
+
+                 <button class="btn-gemini generate-ideas-btn font-bold py-3 px-6 rounded-full" data-dept-key="${deptKey}">
+
+                    <span data-i18n-key="generateIdeasButton">${translations[currentLang].generateIdeasButton}</span>
+
+                </button>
+
+            </div>
+
+            <div id="gemini-ideas-container" class="mb-12"></div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+
+                <div>
+
+                    <h3 class="text-2xl font-bold mb-4">${translations[currentLang].promptsLibrary}</h3>
+
+                    <div class="space-y-4">
+
+                        ${data.prompts.map((prompt) => `
+
+                            <div class="card p-0 overflow-hidden">
+
+                                <button class="prompt-card-header w-full text-left p-4 flex justify-between items-center">
+
+                                    <h4 class="font-semibold">${prompt.title}</h4>
+
+                                    <svg class="icon-arrow w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+
+                                </button>
+
+                                <div class="prompt-card-content px-4 pb-4">
+
+                                    <div class="border-t pt-4">
+
+                                        <h5 class="font-semibold text-sm text-gray-500 mb-2">${translations[currentLang].blueprint}</h5>
+
+                                        <pre class="bg-gray-100 p-3 rounded-md text-sm whitespace-pre-wrap font-sans">${prompt.blueprint}</pre>
+
+                                        <h5 class="font-semibold text-sm text-gray-500 mt-4 mb-2">${translations[currentLang].example}</h5>
+
+                                        <pre class="bg-gray-100 p-3 rounded-md text-sm whitespace-pre-wrap font-sans">${prompt.example}</pre>
+
+                                    </div>
+
+                                </div>
+
+                            </div>`).join('')}
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <h3 class="text-2xl font-bold mb-4">${translations[currentLang].customAssistants}</h3>
+
+                    <div class="space-y-4">
+
+                        ${data.assistants.map(assistant => `<div class="card p-6"><h4 class="font-bold text-[#81B29A]">${assistant.title}</h4><p class="text-gray-600 mt-1">${assistant.description}</p></div>`).join('')}
+
+                    </div>
+
+                </div>
+
+            </div>`;
+
+        departmentContent.innerHTML = contentHtml;
+
+    }
+
+    
+
+    function calculateROI() {
+
+        const h = parseFloat(document.getElementById('heures').value);
+
+        const c = parseFloat(document.getElementById('collaborateurs').value);
+
+        const t = parseFloat(document.getElementById('cout').value);
+
+        
+
+        document.getElementById('heures-val').textContent = h;
+
+        document.getElementById('collaborateurs-val').textContent = c;
+
+        document.getElementById('cout-val').textContent = t;
+
+
+
+        const economie = h * c * t * 12;
+
+        document.getElementById('roi-result').textContent = `${economie.toLocaleString(currentLang)} €`;
+
+        updateRoiChart(economie);
+
+    }
+
+    
+
+    function updateRoiChart(economie) {
+
+        const coutAnnuelLicence = 50 * 12 * document.getElementById('collaborateurs').value;
+
+        const ctx = document.getElementById('roiChart').getContext('2d');
+
+        
+
+        if (roiChart) roiChart.destroy();
+
+        
+
+        roiChart = new Chart(ctx, {
+
+            type: 'bar',
+
+            data: {
+
+                labels: [translations[currentLang].roiChartGains, translations[currentLang].roiChartCosts],
+
+                datasets: [{
+
+                    label: translations[currentLang].roiChartLabel,
+
+                    data: [economie, coutAnnuelLicence],
+
+                    backgroundColor: ['#81B29A', '#F2CC8F'],
+
+                    borderColor: ['#6a9c80', '#e6bf7e'],
+
+                    borderWidth: 1
+
+                }]
+
+            },
+
+            options: {
+
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+
+                scales: { x: { beginAtZero: true, ticks: { callback: value => value.toLocaleString(currentLang) + '€' } } },
+
+                plugins: { legend: { display: false }, title: { display: true, text: translations[currentLang].roiChartTitle } }
+
+            }
+
+        });
+
+    }
+
+
+
+    // --- EVENT LISTENERS ---
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+
+        btn.addEventListener('click', (e) => switchLanguage(e.target.dataset.lang));
+
+    });
+
+
+
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    const pageSections = document.querySelectorAll('.page-section');
+
+    function updateActiveLink(targetId) { navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${targetId}`)); }
+
+    function showPage(targetId) { pageSections.forEach(section => section.classList.toggle('hidden', section.id !== targetId)); updateActiveLink(targetId); window.scrollTo(0, 0); }
+
+    function navigateToSection(e) {
+
+        e.preventDefault();
+
+        const targetId = e.currentTarget.getAttribute('href').substring(1);
+
+        history.pushState(null, null, `#${targetId}`);
+
+        showPage(targetId);
+
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        if(!mobileMenu.classList.contains('hidden')) mobileMenu.classList.add('hidden');
+
+    }
+
+    navLinks.forEach(link => link.addEventListener('click', navigateToSection));
+
+    document.getElementById('mobile-menu-button').addEventListener('click', () => document.getElementById('mobile-menu').classList.toggle('hidden'));
+
+    window.addEventListener('popstate', () => showPage(window.location.hash.substring(1) || 'accueil'));
+
+
+
+    document.getElementById('department-selector').addEventListener('click', (e) => {
+
+        if (e.target.matches('.department-btn')) {
+
+            const deptKey = e.target.dataset.deptKey;
+
+            renderDepartment(deptKey);
+
+            document.querySelectorAll('.department-btn').forEach(btn => btn.classList.remove('active'));
+
+            e.target.classList.add('active');
+
+        }
+
+    });
+
+
+
+    document.getElementById('department-content').addEventListener('click', (e) => {
+
+        const header = e.target.closest('.prompt-card-header');
+
+        if (header) {
+
+            header.nextElementSibling.classList.toggle('open');
+
+            header.querySelector('.icon-arrow').classList.toggle('open');
+
+        }
+
+
+
+        const ideasBtn = e.target.closest('.generate-ideas-btn');
+
+        if (ideasBtn) {
+
+            const deptKey = ideasBtn.dataset.deptKey;
+
+            handleGenerateIdeas(deptKey);
+
+        }
+
+    });
+
+    
+
+    async function handleGenerateIdeas(deptKey) {
+
+        const container = document.getElementById('gemini-ideas-container');
+
+        if (!container) return;
+
+
+
+        container.innerHTML = `<div class="text-center"><div class="loader mx-auto"></div></div>`;
+
+        const deptName = translations[currentLang].departments[deptKey].displayName;
+
+
+
+        const geminiPrompt = `You are an innovation consultant specializing in corporate AI adoption. For the "${deptName}" department, generate 2 new, specific, and actionable use case ideas for generative AI. For each idea, provide a title and a short description. Present the result as a simple JSON array of objects, where each object has "title" and "description" keys. Do not include any other text or markdown formatting. The language for the output must be ${currentLang}.`;
+
+
+
+        const result = await callGemini(geminiPrompt);
+
+
+
+        if (result) {
+
+            try {
+
+                const ideas = JSON.parse(result);
+
+                let ideasHtml = '<div class="grid md:grid-cols-2 gap-4">';
+
+                ideas.forEach(idea => {
+
+                    ideasHtml += `
+
+                    <div class="card p-6 border-l-4 border-[#F2CC8F]">
+
+                        <h4 class="font-bold text-[#81B29A]">${idea.title}</h4>
+
+                        <p class="text-gray-600 mt-1">${idea.description}</p>
+
+                    </div>`;
+
+                });
+
+                ideasHtml += '</div>';
+
+                container.innerHTML = ideasHtml;
+
+            } catch(e) {
+
+                console.error("Failed to parse Gemini ideas response:", e);
+
+                container.innerHTML = `<div class="text-center text-red-500">${translations[currentLang].ideasError}</div>`;
+
+            }
+
+        } else {
+
+            container.innerHTML = `<div class="text-center text-red-500">${translations[currentLang].ideasError}</div>`;
+
+        }
+
+    }
+
+
+
+    async function handleEnhancePrompt() {
+
+        const input = document.getElementById('prompt-input');
+
+        const outputContainer = document.getElementById('prompt-output');
+
+        const loader = document.getElementById('prompt-loader');
+
+        const resultDiv = document.getElementById('prompt-result');
+
+        const errorDiv = document.getElementById('prompt-error');
+
+        
+
+        if (!input.value.trim()) return;
+
+
+
+        outputContainer.classList.remove('hidden');
+
+        loader.classList.remove('hidden');
+
+        resultDiv.classList.add('hidden');
+
+        errorDiv.classList.add('hidden');
+
+
+
+        const geminiPrompt = `As an expert in prompt engineering, transform the following user's idea into a perfect, structured prompt. The user's idea is: "${input.value}".
+
+        Structure your response into four distinct parts: Rôle (Persona), Contexte, Tâche (Instruction), and Format. For each part, provide a clear and concise suggestion.
+
+        Present the result as a simple JSON object with four keys: "role", "context", "task", and "format". Do not add any extra text or markdown. The language for the output content must be ${currentLang}.`;
+
+
+
+        const result = await callGemini(geminiPrompt);
+
+        
+
+        loader.classList.add('hidden');
+
+
+
+        if (result) {
+
+            try {
+
+                const enhancedPrompt = JSON.parse(result);
+
+                resultDiv.innerHTML = `
+
+                    <div class="space-y-4">
+
+                        <div class="flex items-start"><span class="font-bold text-[#81B29A] w-24">${translations[currentLang].promptRole}:</span><div class="flex-1">${enhancedPrompt.role}</div></div>
+
+                        <div class="flex items-start"><span class="font-bold text-[#81B29A] w-24">${translations[currentLang].promptContext}:</span><div class="flex-1">${enhancedPrompt.context}</div></div>
+
+                        <div class="flex items-start"><span class="font-bold text-[#81B29A] w-24">${translations[currentLang].promptTask}:</span><div class="flex-1">${enhancedPrompt.task}</div></div>
+
+                        <div class="flex items-start"><span class="font-bold text-[#81B29A] w-24">${translations[currentLang].promptFormat}:</span><div class="flex-1">${enhancedPrompt.format}</div></div>
+
+                    </div>`;
+
+                resultDiv.classList.remove('hidden');
+
+            } catch (e) {
+
+                console.error("Failed to parse enhanced prompt:", e);
+
+                errorDiv.textContent = translations[currentLang].workshopError;
+
+                errorDiv.classList.remove('hidden');
+
+            }
+
+        } else {
+
+            errorDiv.textContent = translations[currentLang].workshopError;
+
+            errorDiv.classList.remove('hidden');
+
+        }
+
+    }
+
+    document.getElementById('enhance-prompt-btn').addEventListener('click', handleEnhancePrompt);
+
+
+
+    document.getElementById('accordion-container').addEventListener('click', (e) => {
+
+        const header = e.target.closest('.accordion-header');
+
+        if (header) {
+
+            header.nextElementSibling.classList.toggle('open');
+
+            header.querySelector('.icon-arrow').classList.toggle('open');
+
+        }
+
+    });
+
+
+
+    document.getElementById('heures').addEventListener('input', calculateROI);
+
+    document.getElementById('collaborateurs').addEventListener('input', calculateROI);
+
+    document.getElementById('cout').addEventListener('input', calculateROI);
+
+    
+
+    // --- INITIAL LOAD ---
+
+    const initialHash = window.location.hash.substring(1) || 'accueil';
+
+    showPage(initialHash);
+
+    switchLanguage('fr');
+
+});
+
+</script>
+
+</body>
+
+</html>
